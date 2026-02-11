@@ -1,0 +1,5 @@
+{
+  "name": "Dashboard Driver",
+  "description": "A minimalist, modern dashboard for professional drivers to track earnings, monitor working hours, and view performance analytics.",
+  "requestFramePermissions": []
+}
