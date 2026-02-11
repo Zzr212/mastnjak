@@ -18,11 +18,12 @@ import { RecentActivity } from './components/RecentActivity';
 import { AustriaControls } from './components/AustriaControls';
 import { DailyLog } from './components/DailyLog';
 import { SettingsView } from './components/SettingsView';
+import { ProfileView } from './components/ProfileView'; // New
 import { BottomNav } from './components/BottomNav';
 import { Auth } from './components/Auth';
 import { formatCurrency, formatDuration } from './utils/formatters';
 
-type ViewType = 'dashboard' | 'history' | 'settings';
+type ViewType = 'dashboard' | 'history' | 'settings' | 'profile';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -43,8 +44,8 @@ const App: React.FC = () => {
     last_start_timestamp: null as number | null
   });
 
-  // Client-side timer for visual feedback
-  const [displayAustriaTime, setDisplayAustriaTime] = useState(0);
+  // Timers
+  const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
 
   // --- FILTERS STATE ---
   const [earningsFilter, setEarningsFilter] = useState<FilterType>('today');
@@ -83,15 +84,14 @@ const App: React.FC = () => {
       setRatePerKm(data.settings.rate_per_km);
       setLogs(data.logs);
       setAustriaLogs(data.austria_logs || []); 
-      setAustriaSessions(data.austria_sessions || []); // Load sessions
+      setAustriaSessions(data.austria_sessions || []); 
       setAustriaState(data.austria);
       
-      // Calculate initial display time (Live)
+      // Calculate initial session time
       if (data.austria.is_active && data.austria.last_start_timestamp) {
-        const added = Math.floor((Date.now() - data.austria.last_start_timestamp) / 1000);
-        setDisplayAustriaTime(data.austria.total_seconds + added);
+        setCurrentSessionSeconds(Math.floor((Date.now() - data.austria.last_start_timestamp) / 1000));
       } else {
-        setDisplayAustriaTime(data.austria.total_seconds);
+        setCurrentSessionSeconds(0);
       }
 
     } catch (err) {
@@ -111,11 +111,11 @@ const App: React.FC = () => {
     let interval: number;
     if (austriaState.is_active && austriaState.last_start_timestamp) {
       interval = window.setInterval(() => {
-        const added = Math.floor((Date.now() - (austriaState.last_start_timestamp as number)) / 1000);
-        setDisplayAustriaTime(austriaState.total_seconds + added);
+        // Just measure start to now
+        setCurrentSessionSeconds(Math.floor((Date.now() - (austriaState.last_start_timestamp as number)) / 1000));
       }, 1000);
     } else {
-      setDisplayAustriaTime(austriaState.total_seconds);
+      setCurrentSessionSeconds(0);
     }
     return () => clearInterval(interval);
   }, [austriaState]);
@@ -149,8 +149,14 @@ const App: React.FC = () => {
         is_active: data.is_active,
         last_start_timestamp: data.is_active ? Date.now() : null
       });
-      // Also refetch history to keep table consistent if needed
-      fetchData(); // Always refetch to get new session history
+      
+      if (!data.is_active) {
+        setCurrentSessionSeconds(0);
+      }
+      
+      // Force refresh of history immediately
+      setTimeout(fetchData, 100); 
+
     } catch (err) {
       console.error(err);
     }
@@ -158,7 +164,6 @@ const App: React.FC = () => {
 
   const handleDailyLogSave = async (data: any) => {
      try {
-       // Using Promise to work well with button feedback
        await fetch('/api/logs', {
          method: 'POST',
          headers: { 
@@ -179,8 +184,6 @@ const App: React.FC = () => {
 
   const handleLogUpdate = async (updatedLog: any) => {
     try {
-       // Recalculate total earnings before sending to server for safety
-       // (Server should ideally validate this, but we'll do it here for now)
        const dist = Math.max(0, updatedLog.end_km - updatedLog.start_km);
        const newTotal = (dist * ratePerKm) + updatedLog.wage;
        
@@ -240,16 +243,16 @@ const App: React.FC = () => {
     return 0;
   };
 
-  // Calculate Displayed Austria Time based on Filter
+  // Calculate Displayed Austria Time (TOTAL) based on Filter
   const getDisplayedAustriaTime = () => {
-    if (austriaFilter === 'today') {
-      return displayAustriaTime; // Live time
-    }
-
-    // Historical sum from DAILY AGGREGATES (austria_logs) for speed
-    // Exclude today from historical sum to prevent double counting
     const todayStr = new Date().toISOString().split('T')[0];
 
+    if (austriaFilter === 'today') {
+        // Today = stored total + current session if active
+        return austriaState.total_seconds + currentSessionSeconds;
+    }
+
+    // Historical sum (excluding today to allow live update)
     const historicalSum = austriaLogs
       .filter(log => {
         if (log.date === todayStr) return false;
@@ -263,7 +266,7 @@ const App: React.FC = () => {
     if (austriaFilter === 'month') addToday = true;
     if (austriaFilter === 'custom') addToday = isDateInRange(todayStr, austriaCustomRange.start, austriaCustomRange.end);
 
-    return historicalSum + (addToday ? displayAustriaTime : 0);
+    return historicalSum + (addToday ? (austriaState.total_seconds + currentSessionSeconds) : 0);
   };
 
   if (!token) {
@@ -304,18 +307,17 @@ const App: React.FC = () => {
         </nav>
 
         <div className="p-6 border-t border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3 mb-4">
+          <button 
+             onClick={() => setCurrentView('profile')}
+             className="flex items-center gap-3 mb-4 w-full hover:bg-slate-800 p-2 rounded-xl transition-colors text-left"
+          >
              <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                 {username.charAt(0).toUpperCase()}
              </div>
              <div>
                 <p className="font-bold text-sm text-white">{username}</p>
-                <p className="text-xs text-slate-400">Pro Driver</p>
+                <p className="text-xs text-slate-400">View Profile</p>
              </div>
-          </div>
-          <button onClick={handleLogout} className="flex items-center space-x-3 text-sm font-medium text-rose-400 hover:text-rose-300 transition-colors w-full">
-            <LogOut size={16} />
-            <span>Logout Account</span>
           </button>
         </div>
       </aside>
@@ -327,19 +329,24 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
              <div className="lg:hidden w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs">M</div>
              <h2 className="text-lg lg:text-xl font-bold text-slate-800">
-               {currentView === 'dashboard' ? 'Overview' : currentView === 'history' ? 'History' : 'Settings'}
+               {currentView === 'dashboard' ? 'Overview' : 
+                currentView === 'history' ? 'History' : 
+                currentView === 'profile' ? 'My Profile' :
+                'Settings'}
              </h2>
           </div>
           
-          <div className="flex items-center space-x-4">
-             <button onClick={fetchData} className="p-2 text-slate-400 hover:text-slate-900 transition-colors rounded-full hover:bg-slate-100">
-               <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
-             </button>
-             <div className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shadow-sm">
-                <CalendarCheck size={16} className="text-indigo-500" />
-                <span>{new Date().toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'long' })}</span>
-             </div>
-          </div>
+          {currentView !== 'profile' && (
+            <div className="flex items-center space-x-4">
+               <button onClick={fetchData} className="p-2 text-slate-400 hover:text-slate-900 transition-colors rounded-full hover:bg-slate-100">
+                 <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
+               </button>
+               <div className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shadow-sm">
+                  <CalendarCheck size={16} className="text-indigo-500" />
+                  <span>{new Date().toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'long' })}</span>
+               </div>
+            </div>
+          )}
         </header>
 
         {/* Scrollable Content */}
@@ -363,7 +370,7 @@ const App: React.FC = () => {
                     trendUp={true}
                   />
 
-                  {/* CONSOLIDATED AUSTRIA CARD */}
+                  {/* CONSOLIDATED AUSTRIA CARD (SHOWS TOTAL) */}
                   <SmartCard 
                     title="Time in Austria" 
                     value={formatDuration(getDisplayedAustriaTime())}
@@ -399,9 +406,10 @@ const App: React.FC = () => {
 
                   {/* Right Column: Controls */}
                   <div className="flex flex-col gap-6">
+                    {/* CONTROLS CARD (SHOWS SESSION TIME) */}
                     <AustriaControls 
                       isInsideAustria={austriaState.is_active}
-                      timeInAustria={displayAustriaTime} // Keep this always "Today's live time" visually
+                      currentSessionTime={currentSessionSeconds} 
                       onToggle={toggleAustria}
                     />
 
@@ -421,6 +429,15 @@ const App: React.FC = () => {
 
             {currentView === 'settings' && (
               <SettingsView ratePerKm={ratePerKm} setRatePerKm={updateSettings} />
+            )}
+
+            {currentView === 'profile' && (
+              <ProfileView 
+                username={username} 
+                ratePerKm={ratePerKm} 
+                onLogout={handleLogout}
+                onBack={() => setCurrentView('dashboard')}
+              />
             )}
           </div>
         </div>

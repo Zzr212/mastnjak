@@ -3,7 +3,7 @@ import { LayoutDashboard, Wallet, Settings, User } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: string;
-  onChangeView: (view: 'dashboard' | 'history' | 'settings') => void;
+  onChangeView: (view: 'dashboard' | 'history' | 'settings' | 'profile') => void;
   username: string;
 }
 
@@ -31,13 +31,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentView, onChangeView,
         </button>
       ))}
       
-      {/* User Profile Item - Non clickable or opens settings */}
-      <div className="flex flex-col items-center gap-1 p-2 text-slate-400 opacity-80">
-         <div className="bg-indigo-50 text-indigo-600 p-1.5 rounded-full border border-indigo-100">
+      {/* User Profile Item - Now Clickable */}
+      <button 
+        onClick={() => onChangeView('profile')}
+        className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${
+            currentView === 'profile' ? 'opacity-100 scale-105' : 'opacity-80'
+        }`}
+      >
+         <div className={`p-1.5 rounded-full border ${currentView === 'profile' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
             <User size={16} />
          </div>
-         <span className="text-[9px] font-bold max-w-[50px] truncate">{username}</span>
-      </div>
+         <span className={`text-[9px] font-bold max-w-[50px] truncate ${currentView === 'profile' ? 'text-indigo-600' : 'text-slate-400'}`}>{username}</span>
+      </button>
     </div>
   );
 };

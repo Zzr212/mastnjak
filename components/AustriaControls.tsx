@@ -1,16 +1,16 @@
 import React from 'react';
-import { PlayCircle, StopCircle, MapPin } from 'lucide-react';
+import { PlayCircle, StopCircle, MapPin, Clock } from 'lucide-react';
 import { formatDuration } from '../utils/formatters';
 
 interface AustriaControlsProps {
   isInsideAustria: boolean;
-  timeInAustria: number;
+  currentSessionTime: number; // Changed from timeInAustria to currentSessionTime
   onToggle: () => void;
 }
 
 export const AustriaControls: React.FC<AustriaControlsProps> = ({ 
   isInsideAustria, 
-  timeInAustria,
+  currentSessionTime,
   onToggle 
 }) => {
   return (
@@ -22,17 +22,20 @@ export const AustriaControls: React.FC<AustriaControlsProps> = ({
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Austria Timer</h3>
-          <div className={`px-2 py-1 rounded text-xs font-bold border ${isInsideAustria ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-            {isInsideAustria ? 'INSIDE AUSTRIA' : 'OUTSIDE'}
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Current Session</h3>
+          <div className={`px-2 py-1 rounded text-xs font-bold border ${isInsideAustria ? 'bg-red-50 text-red-700 border-red-200 animate-pulse' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+            {isInsideAustria ? 'RECORDING' : 'IDLE'}
           </div>
         </div>
 
-        <div className="text-center mb-6 py-4">
+        <div className="text-center mb-6 py-4 relative">
           <div className="text-5xl font-mono font-bold text-slate-900 tracking-tight">
-            {formatDuration(timeInAustria)}
+            {formatDuration(currentSessionTime)}
           </div>
-          <p className="text-xs text-slate-400 mt-2">Total time in Austria today</p>
+          <div className="flex items-center justify-center gap-1 text-xs text-slate-400 mt-2">
+            <Clock size={12} />
+            <span>Time since entry</span>
+          </div>
         </div>
 
         <button
@@ -46,12 +49,12 @@ export const AustriaControls: React.FC<AustriaControlsProps> = ({
           {isInsideAustria ? (
             <>
               <StopCircle size={24} />
-              <span className="font-bold">Exit Austria</span>
+              <span className="font-bold">Exit Austria (Stop)</span>
             </>
           ) : (
             <>
               <PlayCircle size={24} />
-              <span className="font-bold">Enter Austria</span>
+              <span className="font-bold">Enter Austria (Start)</span>
             </>
           )}
         </button>

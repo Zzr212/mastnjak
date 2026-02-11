@@ -10,7 +10,8 @@ import {
   Check, 
   X,
   MapPin,
-  Calendar
+  Calendar,
+  ListFilter
 } from 'lucide-react';
 import { formatCurrency, formatDuration } from '../utils/formatters';
 
@@ -44,7 +45,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Filter State
+  // Filter State - Default EMPTY to show all
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -55,7 +56,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
   // --- Helpers ---
 
   const isDateInRange = (dateStr: string) => {
-    if (!dateFrom && !dateTo) return true;
+    if (!dateFrom && !dateTo) return true; // Show all if no filter
     const d = new Date(dateStr).getTime();
     const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
     const to = dateTo ? new Date(dateTo).getTime() : Infinity;
@@ -114,35 +115,9 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
 
   const saveEdit = () => {
     if (onUpdateLog && editForm.id && editForm.start_km !== undefined && editForm.end_km !== undefined && editForm.wage !== undefined) {
-      // Recalculate total earnings roughly to update UI immediately (backend should also validate)
-      const dist = Math.max(0, editForm.end_km - editForm.start_km);
-      // We need rate but it's not passed here, let's assume we pass full obj back to parent
-      // For now, we reuse the total_earnings from the form which might need recalculation.
-      // Better: Let parent handle calculation. We just send updated fields.
-      
-      // Calculate earnings based on previous rate logic if possible, or just trust the backend update.
-      // For this UI, we will send what we have.
-      const estimatedEarnings = (editForm.total_earnings || 0); // User can't edit total directly in this simple form, usually calculated.
-      // Let's allow user to see fields.
-      
-      // Since we don't have rate here, let's rely on parent/backend to recalc. 
-      // But we need to pass the calc. 
-      // Simplified: We pass fields, App.tsx handles API call.
-      
-      // We will perform a simple calculation assuming we want to update.
-      // Actually, we should trigger a recalculation on the server or parent.
-      // Let's pass the raw values.
-      
-      // Hack for immediate UI update:
-      // We need to calculate total_earnings = (end - start) * rate + wage.
-      // We don't have rate. 
-      // Let's assume the user just saves km/wage and backend handles it.
-      // Wait, we need to show the value.
-      // Let's update `onUpdateLog` to take the edited Log.
-      
       onUpdateLog({
         ...editForm as Log,
-        total_earnings: 0 // Placeholder, backend should recalc
+        total_earnings: 0 
       });
       setEditingId(null);
     }
@@ -219,12 +194,12 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
         <div className="pt-4 border-t border-slate-100">
            {activeTab === 'earnings' ? (
              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-500 font-medium">Total Earnings (Selected Period)</span>
+                <span className="text-sm text-slate-500 font-medium">Total Earnings {dateFrom || dateTo ? '(Selected)' : '(All Time)'}</span>
                 <span className="text-xl font-black text-slate-900">{formatCurrency(totalEarningsSummary)}</span>
              </div>
            ) : (
              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-500 font-medium">Total Austria Time (Selected Period)</span>
+                <span className="text-sm text-slate-500 font-medium">Total Austria Time {dateFrom || dateTo ? '(Selected)' : '(All Time)'}</span>
                 <span className="text-xl font-black text-slate-900">{formatDuration(totalAustriaTimeSummary)}</span>
              </div>
            )}
@@ -235,8 +210,8 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 min-h-[400px] flex flex-col">
         {paginatedData.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-12">
-            <Filter size={48} className="mb-4 opacity-20" />
-            <p>No records found for this period.</p>
+            <ListFilter size={48} className="mb-4 opacity-20" />
+            <p>No records found.</p>
           </div>
         ) : (
           <div className="flex-1">
