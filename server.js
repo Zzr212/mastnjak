@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
-const os = require('os'); // Added to check network interfaces
+const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,7 +77,7 @@ const authenticateToken = (req, res, next) => {
 
 // --- Routes ---
 
-// Health Check (Use this to test connection: http://IP:3000/health)
+// Health Check
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
@@ -101,7 +101,7 @@ app.post('/api/auth/login', (req, res) => {
     
     if (await bcrypt.compare(password, user.password)) {
       const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY);
-      res.json({ token, rate_per_km: user.rate_per_km });
+      res.json({ token, rate_per_km: user.rate_per_km, username: user.username });
     } else {
       res.status(403).json({ error: "Invalid password" });
     }
@@ -115,6 +115,7 @@ app.get('/api/data', authenticateToken, (req, res) => {
 
   const response = {
     logs: [],
+    austria_logs: [], // Added historical austria logs
     austria: { total_seconds: 0, is_active: false, last_start_timestamp: null },
     settings: { rate_per_km: 0.12 }
   };
@@ -125,7 +126,7 @@ app.get('/api/data', authenticateToken, (req, res) => {
       if (row) response.settings.rate_per_km = row.rate_per_km;
     });
 
-    // Get Austria Status for Today
+    // Get Today's Austria Status
     db.get(`SELECT * FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
       if (row) {
         response.austria = {
@@ -136,8 +137,13 @@ app.get('/api/data', authenticateToken, (req, res) => {
       }
     });
 
-    // Get Recent Logs (Last 30 days)
-    db.all(`SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT 30`, [userId], (err, rows) => {
+    // Get Recent Austria Logs (Last 90 days for charts/stats)
+    db.all(`SELECT * FROM austria_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
+      response.austria_logs = rows || [];
+    });
+
+    // Get Recent Earnings Logs (Last 90 days)
+    db.all(`SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
       response.logs = rows || [];
       res.json(response);
     });
@@ -156,7 +162,6 @@ app.post('/api/settings', authenticateToken, (req, res) => {
 // Add Daily Log
 app.post('/api/logs', authenticateToken, (req, res) => {
   const { date, start_km, end_km, wage, total_earnings } = req.body;
-  // Check if log exists for date, if so update, else insert
   db.get(`SELECT id FROM daily_logs WHERE user_id = ? AND date = ?`, [req.user.id, date], (err, row) => {
     if (row) {
       db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=?`,
@@ -211,21 +216,15 @@ app.get('*', (req, res) => {
   }
 });
 
-// Listen on 0.0.0.0 to accept external connections
+// Listen on 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`-------------------------------------------`);
   console.log(`Server running on port ${PORT}`);
-  console.log(`Access locally: http://localhost:${PORT}`);
-  
-  // Log all network interfaces to help debugging
   const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
       for (const net of nets[name]) {
-          // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
           if (net.family === 'IPv4' && !net.internal) {
-              console.log(`Access externally: http://${net.address}:${PORT}`);
+              console.log(`External IP: http://${net.address}:${PORT}`);
           }
       }
   }
-  console.log(`-------------------------------------------`);
 });
