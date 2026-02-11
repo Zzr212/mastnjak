@@ -190,9 +190,15 @@ app.post('/api/austria/toggle', authenticateToken, (req, res) => {
 
 // Catch-all for React
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  const indexPath = path.join(__dirname, 'dist', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send("App not built. Run 'npm run build' first.");
+  }
 });
 
-app.listen(PORT, () => {
+// Listen on 0.0.0.0 to accept external connections
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
