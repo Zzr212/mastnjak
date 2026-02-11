@@ -14,7 +14,14 @@ const SECRET_KEY = "dashboard_driver_secret_key_change_in_prod";
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
+
+// Serve static files from dist
+const distPath = path.join(__dirname, 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  console.warn("WARNING: 'dist' folder not found. Run 'npm run build' to generate frontend assets.");
+}
 
 // Database Setup
 const dbDataDir = path.join(__dirname, 'data');
