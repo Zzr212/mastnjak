@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const os = require('os'); // Added to check network interfaces
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +69,11 @@ const authenticateToken = (req, res, next) => {
 };
 
 // --- Routes ---
+
+// Health Check (Use this to test connection: http://IP:3000/health)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
@@ -200,5 +206,19 @@ app.get('*', (req, res) => {
 
 // Listen on 0.0.0.0 to accept external connections
 app.listen(PORT, '0.0.0.0', () => {
+  console.log(`-------------------------------------------`);
   console.log(`Server running on port ${PORT}`);
+  console.log(`Access locally: http://localhost:${PORT}`);
+  
+  // Log all network interfaces to help debugging
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+          // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+          if (net.family === 'IPv4' && !net.internal) {
+              console.log(`Access externally: http://${net.address}:${PORT}`);
+          }
+      }
+  }
+  console.log(`-------------------------------------------`);
 });
