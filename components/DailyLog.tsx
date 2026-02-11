@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Save, Calculator, Wallet } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Calculator, Wallet, CheckCircle, Loader2 } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 interface DailyLogData {
@@ -19,6 +19,9 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
   const [endKm, setEndKm] = useState<string>('');
   const [dailyWage, setDailyWage] = useState<string>('');
   
+  // Status state for the button
+  const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+
   const calculateEstimatedEarnings = () => {
     const start = parseFloat(startKm) || 0;
     const end = parseFloat(endKm) || 0;
@@ -28,23 +31,34 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
     return (dist * ratePerKm) + wage;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const total = calculateEstimatedEarnings();
     const start = parseFloat(startKm) || 0;
     const end = parseFloat(endKm) || 0;
     const wage = parseFloat(dailyWage) || 0;
 
     if (total > 0) {
-      onSave({
+      setStatus('saving');
+      
+      // Simulate API call delay for effect or wait for real implementation via onSave promise
+      await onSave({
         start_km: start,
         end_km: end,
         wage: wage,
         total_earnings: total
       });
-      // Clear form after save
+
+      setStatus('success');
+      
+      // Clear form
       setStartKm('');
       setEndKm('');
       setDailyWage('');
+
+      // Reset button after 3 seconds
+      setTimeout(() => {
+        setStatus('idle');
+      }, 3000);
     }
   };
 
@@ -102,10 +116,31 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
           
           <button 
             onClick={handleSave}
-            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-lg hover:bg-slate-800 transition-all font-medium active:scale-95"
+            disabled={status !== 'idle'}
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg transition-all font-medium active:scale-95 ${
+              status === 'success' 
+                ? 'bg-emerald-500 text-white' 
+                : status === 'saving'
+                ? 'bg-slate-700 text-slate-200 cursor-wait'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
           >
-            <Save size={18} />
-            Save Entry
+            {status === 'success' ? (
+              <>
+                <CheckCircle size={18} />
+                Entry Saved!
+              </>
+            ) : status === 'saving' ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                Save Entry
+              </>
+            )}
           </button>
         </div>
       </div>

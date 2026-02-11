@@ -33,7 +33,8 @@ const App: React.FC = () => {
   // Data State
   const [ratePerKm, setRatePerKm] = useState(0.12);
   const [logs, setLogs] = useState<any[]>([]);
-  const [austriaLogs, setAustriaLogs] = useState<any[]>([]); // New historical state
+  const [austriaLogs, setAustriaLogs] = useState<any[]>([]); // Daily Aggregates
+  const [austriaSessions, setAustriaSessions] = useState<any[]>([]); // Detailed History
   
   // Austria Live State
   const [austriaState, setAustriaState] = useState({
@@ -81,7 +82,8 @@ const App: React.FC = () => {
       const data = await res.json();
       setRatePerKm(data.settings.rate_per_km);
       setLogs(data.logs);
-      setAustriaLogs(data.austria_logs || []); // Capture history
+      setAustriaLogs(data.austria_logs || []); 
+      setAustriaSessions(data.austria_sessions || []); // Load sessions
       setAustriaState(data.austria);
       
       // Calculate initial display time (Live)
@@ -148,7 +150,7 @@ const App: React.FC = () => {
         last_start_timestamp: data.is_active ? Date.now() : null
       });
       // Also refetch history to keep table consistent if needed
-      if (!data.is_active) fetchData(); 
+      fetchData(); // Always refetch to get new session history
     } catch (err) {
       console.error(err);
     }
@@ -156,6 +158,7 @@ const App: React.FC = () => {
 
   const handleDailyLogSave = async (data: any) => {
      try {
+       // Using Promise to work well with button feedback
        await fetch('/api/logs', {
          method: 'POST',
          headers: { 
@@ -168,10 +171,34 @@ const App: React.FC = () => {
          })
        });
        fetchData();
-       alert("Daily log saved successfully!");
      } catch (err) {
-       alert("Failed to save.");
+       console.error("Failed to save");
+       throw err;
      }
+  };
+
+  const handleLogUpdate = async (updatedLog: any) => {
+    try {
+       // Recalculate total earnings before sending to server for safety
+       // (Server should ideally validate this, but we'll do it here for now)
+       const dist = Math.max(0, updatedLog.end_km - updatedLog.start_km);
+       const newTotal = (dist * ratePerKm) + updatedLog.wage;
+       
+       await fetch('/api/logs', {
+         method: 'POST',
+         headers: { 
+           'Content-Type': 'application/json', 
+           'Authorization': `Bearer ${token}`
+         },
+         body: JSON.stringify({
+           ...updatedLog,
+           total_earnings: newTotal
+         })
+       });
+       fetchData();
+    } catch (err) {
+      alert('Failed to update log');
+    }
   };
 
   // --- CALCULATION HELPERS ---
@@ -215,36 +242,25 @@ const App: React.FC = () => {
 
   // Calculate Displayed Austria Time based on Filter
   const getDisplayedAustriaTime = () => {
-    // If filter is Today, just return the live timer
     if (austriaFilter === 'today') {
-      return displayAustriaTime;
+      return displayAustriaTime; // Live time
     }
 
-    // Prepare list to sum
-    let seconds = 0;
-    
-    // Historical logs (excluding today usually, depending on how DB stores it, 
-    // but our API returns historical logs separately. 
-    // NOTE: Our API returns ALL recent logs including today if saved. 
-    // BUT today is live in `displayAustriaTime`. 
-    // Strategy: Sum historical logs EXCLUDING today, then add `displayAustriaTime`.
-    
+    // Historical sum from DAILY AGGREGATES (austria_logs) for speed
+    // Exclude today from historical sum to prevent double counting
     const todayStr = new Date().toISOString().split('T')[0];
 
     const historicalSum = austriaLogs
       .filter(log => {
-        // Exclude today from history sum to avoid double counting if DB is updated
         if (log.date === todayStr) return false;
-
         if (austriaFilter === 'month') return isDateInMonth(log.date);
         if (austriaFilter === 'custom') return isDateInRange(log.date, austriaCustomRange.start, austriaCustomRange.end);
         return false;
       })
       .reduce((acc, curr) => acc + curr.total_seconds, 0);
 
-    // Add today IF today falls in the range
     let addToday = false;
-    if (austriaFilter === 'month') addToday = true; // Today is always in this month
+    if (austriaFilter === 'month') addToday = true;
     if (austriaFilter === 'custom') addToday = isDateInRange(todayStr, austriaCustomRange.start, austriaCustomRange.end);
 
     return historicalSum + (addToday ? displayAustriaTime : 0);
@@ -396,10 +412,11 @@ const App: React.FC = () => {
             )}
 
             {currentView === 'history' && (
-               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                  <h3 className="text-lg font-bold text-slate-800 mb-6">Activity Log</h3>
-                  <RecentActivity logs={logs} />
-               </div>
+               <RecentActivity 
+                 logs={logs} 
+                 austriaSessions={austriaSessions} 
+                 onUpdateLog={handleLogUpdate}
+               />
             )}
 
             {currentView === 'settings' && (

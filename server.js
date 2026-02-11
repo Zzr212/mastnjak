@@ -51,7 +51,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Austria Tracking
+  // Austria Daily Aggregates (For Dashboard Totals)
   db.run(`CREATE TABLE IF NOT EXISTS austria_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -59,6 +59,17 @@ db.serialize(() => {
     total_seconds INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 0, 
     last_start_timestamp INTEGER
+  )`);
+
+  // Austria Individual Sessions (For History)
+  db.run(`CREATE TABLE IF NOT EXISTS austria_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    start_time INTEGER,
+    end_time INTEGER,
+    duration INTEGER,
+    date TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 });
 
@@ -115,7 +126,8 @@ app.get('/api/data', authenticateToken, (req, res) => {
 
   const response = {
     logs: [],
-    austria_logs: [], // Added historical austria logs
+    austria_logs: [], // Historical daily aggregates
+    austria_sessions: [], // Detailed sessions history
     austria: { total_seconds: 0, is_active: false, last_start_timestamp: null },
     settings: { rate_per_km: 0.12 }
   };
@@ -126,7 +138,7 @@ app.get('/api/data', authenticateToken, (req, res) => {
       if (row) response.settings.rate_per_km = row.rate_per_km;
     });
 
-    // Get Today's Austria Status
+    // Get Today's Austria Status (Live State)
     db.get(`SELECT * FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
       if (row) {
         response.austria = {
@@ -137,12 +149,17 @@ app.get('/api/data', authenticateToken, (req, res) => {
       }
     });
 
-    // Get Recent Austria Logs (Last 90 days for charts/stats)
+    // Get Recent Austria Logs (Aggregates)
     db.all(`SELECT * FROM austria_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
       response.austria_logs = rows || [];
     });
 
-    // Get Recent Earnings Logs (Last 90 days)
+    // Get Recent Austria Sessions (Detailed)
+    db.all(`SELECT * FROM austria_sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT 200`, [userId], (err, rows) => {
+      response.austria_sessions = rows || [];
+    });
+
+    // Get Recent Earnings Logs
     db.all(`SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
       response.logs = rows || [];
       res.json(response);
@@ -159,24 +176,35 @@ app.post('/api/settings', authenticateToken, (req, res) => {
   });
 });
 
-// Add Daily Log
+// Add or Update Daily Log
 app.post('/api/logs', authenticateToken, (req, res) => {
-  const { date, start_km, end_km, wage, total_earnings } = req.body;
-  db.get(`SELECT id FROM daily_logs WHERE user_id = ? AND date = ?`, [req.user.id, date], (err, row) => {
-    if (row) {
-      db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=?`,
-        [start_km, end_km, wage, total_earnings, row.id], (err) => {
-          if (err) return res.status(500).json({error: err.message});
-          res.json({ success: true });
-        });
-    } else {
-      db.run(`INSERT INTO daily_logs (user_id, date, start_km, end_km, wage, total_earnings) VALUES (?,?,?,?,?,?)`,
-        [req.user.id, date, start_km, end_km, wage, total_earnings], (err) => {
-          if (err) return res.status(500).json({error: err.message});
-          res.json({ success: true });
-        });
-    }
-  });
+  const { id, date, start_km, end_km, wage, total_earnings } = req.body;
+  
+  // If ID is provided, it's a specific edit
+  if (id) {
+    db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=? AND user_id=?`,
+      [start_km, end_km, wage, total_earnings, id, req.user.id], (err) => {
+        if (err) return res.status(500).json({error: err.message});
+        res.json({ success: true });
+      });
+  } else {
+    // Normal save (check by date)
+    db.get(`SELECT id FROM daily_logs WHERE user_id = ? AND date = ?`, [req.user.id, date], (err, row) => {
+      if (row) {
+        db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=?`,
+          [start_km, end_km, wage, total_earnings, row.id], (err) => {
+            if (err) return res.status(500).json({error: err.message});
+            res.json({ success: true });
+          });
+      } else {
+        db.run(`INSERT INTO daily_logs (user_id, date, start_km, end_km, wage, total_earnings) VALUES (?,?,?,?,?,?)`,
+          [req.user.id, date, start_km, end_km, wage, total_earnings], (err) => {
+            if (err) return res.status(500).json({error: err.message});
+            res.json({ success: true });
+          });
+      }
+    });
+  }
 });
 
 // Toggle Austria
@@ -193,10 +221,21 @@ app.post('/api/austria/toggle', authenticateToken, (req, res) => {
     } else {
       if (row.is_active) {
         // Stopping
-        const addedSeconds = Math.floor((now - row.last_start_timestamp) / 1000);
-        const newTotal = row.total_seconds + addedSeconds;
+        const startTime = row.last_start_timestamp;
+        const duration = Math.floor((now - startTime) / 1000);
+        const newTotal = row.total_seconds + duration;
+
+        // 1. Update Daily Aggregate
         db.run(`UPDATE austria_logs SET total_seconds = ?, is_active = 0, last_start_timestamp = NULL WHERE id = ?`,
-          [newTotal, row.id], (err) => res.json({ success: true, is_active: false, total_seconds: newTotal }));
+          [newTotal, row.id], (err) => {
+            if (err) console.error(err);
+            
+            // 2. Insert Session Record (For History)
+            db.run(`INSERT INTO austria_sessions (user_id, start_time, end_time, duration, date) VALUES (?, ?, ?, ?, ?)`,
+              [userId, startTime, now, duration, today], (err2) => {
+                res.json({ success: true, is_active: false, total_seconds: newTotal });
+              });
+          });
       } else {
         // Starting again
         db.run(`UPDATE austria_logs SET is_active = 1, last_start_timestamp = ? WHERE id = ?`,
@@ -216,7 +255,6 @@ app.get('*', (req, res) => {
   }
 });
 
-// Listen on 0.0.0.0
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   const nets = os.networkInterfaces();
