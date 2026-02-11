@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Save, Calculator } from 'lucide-react';
+import { Save, Calculator, Wallet } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
+
+interface DailyLogData {
+  start_km: number;
+  end_km: number;
+  wage: number;
+  total_earnings: number;
+}
 
 interface DailyLogProps {
   ratePerKm: number;
-  onSave: (earnings: number) => void;
+  onSave: (data: DailyLogData) => void;
 }
 
 export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
@@ -23,18 +30,29 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
 
   const handleSave = () => {
     const total = calculateEstimatedEarnings();
+    const start = parseFloat(startKm) || 0;
+    const end = parseFloat(endKm) || 0;
+    const wage = parseFloat(dailyWage) || 0;
+
     if (total > 0) {
-      onSave(total);
-      // Reset form usually, keeping values for demo
-      alert(`Saved daily entry! Total: ${formatCurrency(total)}`);
+      onSave({
+        start_km: start,
+        end_km: end,
+        wage: wage,
+        total_earnings: total
+      });
+      // Clear form after save
+      setStartKm('');
+      setEndKm('');
+      setDailyWage('');
     }
   };
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
       <div className="flex items-center gap-2 mb-6">
-        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-          <Calculator size={20} />
+        <div className="p-2 bg-slate-900 text-white rounded-lg">
+          <Wallet size={20} />
         </div>
         <h3 className="text-lg font-semibold text-slate-800">Daily Entry</h3>
       </div>
@@ -47,7 +65,7 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
               type="number" 
               value={startKm}
               onChange={(e) => setStartKm(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               placeholder="0"
             />
           </div>
@@ -57,7 +75,7 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
               type="number" 
               value={endKm}
               onChange={(e) => setEndKm(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               placeholder="0"
             />
           </div>
@@ -69,12 +87,12 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
             type="number" 
             value={dailyWage}
             onChange={(e) => setDailyWage(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
             placeholder="e.g. 50"
           />
         </div>
 
-        <div className="pt-2 border-t border-slate-50 mt-2">
+        <div className="pt-4 border-t border-slate-50 mt-2">
           <div className="flex justify-between items-center mb-4">
             <span className="text-sm text-slate-500">Rate: {formatCurrency(ratePerKm)}/km</span>
             <span className="text-lg font-bold text-slate-900">
@@ -84,10 +102,10 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
           
           <button 
             onClick={handleSave}
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 transition-colors font-medium shadow-sm shadow-emerald-200"
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3 rounded-lg hover:bg-slate-800 transition-all font-medium active:scale-95"
           >
             <Save size={18} />
-            Save Day
+            Save Entry
           </button>
         </div>
       </div>

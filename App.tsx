@@ -135,21 +135,8 @@ const App: React.FC = () => {
     }
   };
 
-  const saveDailyLog = async (earnings: number) => {
-    // We need to capture the inputs from the child component, but simpler to just reload data after save
-    // In a real app, DailyLog should pass the full object, not just earnings.
-    // Since DailyLog calculates locally, we need to move that calculation to backend or pass params.
-    // For now, let's assume we refresh data.
-    fetchData();
-  };
-
   // Enhanced Save Handler to pass to DailyLog
   const handleDailyLogSave = async (data: any) => {
-     // DailyLog component needs to be updated to pass start/end km, but based on previous code it passes total.
-     // Let's modify the fetch to assume DailyLog logic is handled inside DailyLog but we need to send the request.
-     // Wait, DailyLog in previous step handled calculation. We need to actually send data to server.
-     
-     // I will wrap the onSave to actually call API
      try {
        await fetch('/api/logs', {
          method: 'POST',
@@ -293,10 +280,7 @@ const App: React.FC = () => {
                       onToggle={toggleAustria}
                     />
 
-                    {/* Adjusted DailyLog to match new handler signature */}
-                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-                         <ModifiedDailyLog ratePerKm={ratePerKm} onSave={handleDailyLogSave} />
-                    </div>
+                    <DailyLog ratePerKm={ratePerKm} onSave={handleDailyLogSave} />
                   </div>
                 </div>
               </>
@@ -320,47 +304,6 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-// Helper for DailyLog to pass data correctly
-const ModifiedDailyLog = ({ ratePerKm, onSave }: any) => {
-  const [startKm, setStartKm] = useState('');
-  const [endKm, setEndKm] = useState('');
-  const [wage, setWage] = useState('');
-  
-  const calculate = () => {
-    const s = parseFloat(startKm) || 0;
-    const e = parseFloat(endKm) || 0;
-    const w = parseFloat(wage) || 0;
-    return (Math.max(0, e - s) * ratePerKm) + w;
-  };
-
-  return (
-    <div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-         <Wallet size={18} className="text-slate-400"/> Daily Entry
-      </h3>
-      <div className="space-y-3">
-         <div className="grid grid-cols-2 gap-3">
-           <input type="number" placeholder="Start KM" className="p-2 border rounded-lg bg-slate-50" value={startKm} onChange={e=>setStartKm(e.target.value)} />
-           <input type="number" placeholder="End KM" className="p-2 border rounded-lg bg-slate-50" value={endKm} onChange={e=>setEndKm(e.target.value)} />
-         </div>
-         <input type="number" placeholder="Wage (€)" className="w-full p-2 border rounded-lg bg-slate-50" value={wage} onChange={e=>setWage(e.target.value)} />
-         
-         <div className="flex justify-between items-center py-2">
-            <span className="text-sm text-slate-500">Total:</span>
-            <span className="font-bold text-lg">{formatCurrency(calculate())}</span>
-         </div>
-
-         <button 
-           onClick={() => onSave({ start_km: parseFloat(startKm), end_km: parseFloat(endKm), wage: parseFloat(wage), total_earnings: calculate() })}
-           className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800"
-         >
-           Save Entry
-         </button>
-      </div>
-    </div>
-  );
-}
 
 const NavItem: React.FC<{ icon: React.ReactNode; label: string; active?: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
   <button 
