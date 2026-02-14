@@ -39,13 +39,14 @@ interface RecentActivityProps {
   logs: Log[];
   austriaSessions: AustriaSession[];
   onUpdateLog?: (log: Log) => void;
+  onDeleteLog?: (id: number) => void;
   onDeleteAustriaSession?: (id: number) => void;
   lang?: Language; // Add language prop for datepicker
 }
 
 type TabType = 'earnings' | 'austria';
 
-export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSessions, onUpdateLog, onDeleteAustriaSession, lang = 'en' }) => {
+export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSessions, onUpdateLog, onDeleteLog, onDeleteAustriaSession, lang = 'en' }) => {
   const [activeTab, setActiveTab] = useState<TabType>('earnings');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -282,12 +283,20 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
                                <div className="text-right">
                                   <div className="font-black text-slate-900">{formatCurrency(log.total_earnings)}</div>
                                </div>
-                               <button 
-                                 onClick={() => startEdit(log)}
-                                 className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                               >
-                                 <Edit2 size={16} />
-                               </button>
+                               <div className="flex gap-1">
+                                 <button 
+                                   onClick={() => startEdit(log)}
+                                   className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                 >
+                                   <Edit2 size={16} />
+                                 </button>
+                                 <button 
+                                   onClick={() => onDeleteLog && onDeleteLog(log.id)}
+                                   className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                 >
+                                   <Trash2 size={16} />
+                                 </button>
+                               </div>
                              </div>
                           </div>
                         )}

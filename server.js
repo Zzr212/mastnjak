@@ -280,15 +280,43 @@ app.delete('/api/notes/:id', authenticateToken, (req, res) => {
   db.run(`DELETE FROM notes WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], (err) => res.json({success: true}));
 });
 
-// Austria Session Delete Route
+// Logs Delete Route
+app.delete('/api/logs/:id', authenticateToken, (req, res) => {
+    db.run(`DELETE FROM daily_logs WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// Austria Session Delete Route (Updates daily totals)
 app.delete('/api/austria/session/:id', authenticateToken, (req, res) => {
-  db.run(`DELETE FROM austria_sessions WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], function(err) {
+  const sessionId = req.params.id;
+  const userId = req.user.id;
+
+  // First get the session to know duration and date
+  db.get(`SELECT * FROM austria_sessions WHERE id = ? AND user_id = ?`, [sessionId, userId], (err, session) => {
+    if (err) return res.status(500).json({error: err.message});
+    if (!session) return res.status(404).json({error: "Session not found"});
+
+    const { date, duration } = session;
+
+    // Delete session
+    db.run(`DELETE FROM austria_sessions WHERE id = ?`, [sessionId], (err) => {
       if (err) return res.status(500).json({error: err.message});
-      res.json({ success: true });
+
+      // Update daily log total
+      db.run(`UPDATE austria_logs SET total_seconds = total_seconds - ? WHERE user_id = ? AND date = ?`, 
+        [duration, userId, date], 
+        (err) => {
+           if (err) console.error("Failed to update austria_logs", err);
+           res.json({ success: true });
+        }
+      );
+    });
   });
 });
 
-// Logs & Austria Routes (Kept same as before)
+// Logs Save & Update
 app.post('/api/logs', authenticateToken, (req, res) => {
   const { id, date, start_km, end_km, wage, total_earnings } = req.body;
   if (id) {

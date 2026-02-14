@@ -199,6 +199,15 @@ const App: React.FC = () => {
     } catch (err) { alert('Failed'); }
   };
 
+  const handleDeleteLog = async (id: number) => {
+      if (!confirm(t('confirm') + '?')) return;
+      await fetch(`/api/logs/${id}`, {
+          method: 'DELETE',
+          headers: {'Authorization': `Bearer ${token}`}
+      });
+      fetchData();
+  };
+
   const handleAddNote = async (content: string, date: string) => {
       await fetch('/api/notes', {
           method: 'POST',
@@ -335,7 +344,7 @@ const App: React.FC = () => {
               </>
             )}
 
-            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={austriaSessions} onUpdateLog={handleLogUpdate} onDeleteAustriaSession={handleDeleteAustriaSession} lang={language} />}
+            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={austriaSessions} onUpdateLog={handleLogUpdate} onDeleteLog={handleDeleteLog} onDeleteAustriaSession={handleDeleteAustriaSession} lang={language} />}
             {currentView === 'settings' && <SettingsView ratePerKm={ratePerKm} setRatePerKm={updateSettings} language={language} setLanguage={handleUpdateLanguage} />}
             {currentView === 'profile' && <ProfileView username={username} ratePerKm={ratePerKm} onLogout={handleLogout} onBack={() => setCurrentView('dashboard')} lang={language} />}
             {currentView === 'notes' && <NotesView notes={notes} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} lang={language} />}
