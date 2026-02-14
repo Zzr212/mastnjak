@@ -1,37 +1,64 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Globe } from 'lucide-react';
+import { Language, getTranslation } from '../utils/translations';
 
 interface SettingsViewProps {
   ratePerKm: number;
   setRatePerKm: (rate: number) => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ ratePerKm, setRatePerKm }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ ratePerKm, setRatePerKm, language, setLanguage }) => {
+  const t = (key: any) => getTranslation(language, key);
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="p-3 bg-white/50 backdrop-blur rounded-2xl shadow-sm border border-slate-200/50">
           <Settings className="text-slate-700" size={24} />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
-          <p className="text-slate-500 text-sm">Manage your preferences</p>
+          <h2 className="text-2xl font-bold text-slate-900">{t('settings')}</h2>
+          <p className="text-slate-500 text-sm">Manage preferences</p>
         </div>
       </div>
       
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-50">
-          <h3 className="text-lg font-semibold text-slate-800">Earnings Configuration</h3>
-          <p className="text-sm text-slate-500">Configure how your mileage earnings are calculated.</p>
-        </div>
+      {/* Configuration Card - Clean Style */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-white/50 shadow-sm overflow-hidden">
         
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Rate per Kilometer (€)
-            </label>
-            <div className="flex items-center max-w-xs">
-              <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-slate-500 sm:text-sm font-medium">
+        {/* Language Section */}
+        <div className="p-6 border-b border-slate-100">
+           <div className="flex items-center gap-2 mb-4">
+              <Globe size={18} className="text-indigo-500" />
+              <h3 className="text-lg font-bold text-slate-800">{t('language')}</h3>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(['en', 'bs', 'de', 'it'] as Language[]).map(lang => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${
+                    language === lang 
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
+                      : 'border-transparent bg-slate-50 text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  {lang.toUpperCase()}
+                </button>
+              ))}
+           </div>
+        </div>
+
+        {/* Rate Section */}
+        <div className="p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-slate-800">{t('config')}</h3>
+            <p className="text-sm text-slate-500">{t('currentRate')}</p>
+          </div>
+          
+          <div className="flex items-center max-w-xs">
+              <span className="inline-flex items-center px-4 py-3 rounded-l-2xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 font-bold">
                 €
               </span>
               <input
@@ -39,24 +66,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ ratePerKm, setRatePe
                 step="0.01"
                 value={ratePerKm}
                 onChange={(e) => setRatePerKm(parseFloat(e.target.value) || 0)}
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-r-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none sm:text-sm text-slate-900 font-medium"
+                className="flex-1 min-w-0 block w-full px-4 py-3 rounded-r-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-slate-900 font-bold text-lg"
                 placeholder="0.12"
               />
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              This value is multiplied by the difference between Start and End KM.
-            </p>
-          </div>
-
-           <div className="pt-4 border-t border-slate-50">
-            <h4 className="text-sm font-medium text-slate-700 mb-2">Example Calculation</h4>
-            <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-1 font-mono">
-                <p>Start KM: 1000</p>
-                <p>End KM:   1500 (Diff: 500km)</p>
-                <p>Rate:     €{ratePerKm}</p>
-                <p>-----------------</p>
-                <p className="font-bold text-emerald-600">Earnings: €{(500 * ratePerKm).toFixed(2)} + Daily Wage</p>
-            </div>
           </div>
         </div>
       </div>

@@ -36,8 +36,16 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     password TEXT,
-    rate_per_km REAL DEFAULT 0.12
+    rate_per_km REAL DEFAULT 0.12,
+    language TEXT DEFAULT 'en'
   )`);
+  
+  // Migration for language column if it doesn't exist (Simple check)
+  db.all("PRAGMA table_info(users)", (err, rows) => {
+    if (!rows.some(col => col.name === 'language')) {
+      db.run("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'");
+    }
+  });
 
   // Daily Logs (Earnings)
   db.run(`CREATE TABLE IF NOT EXISTS daily_logs (
@@ -51,7 +59,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Austria Daily Aggregates (For Dashboard Totals)
+  // Austria Daily Aggregates
   db.run(`CREATE TABLE IF NOT EXISTS austria_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -61,7 +69,7 @@ db.serialize(() => {
     last_start_timestamp INTEGER
   )`);
 
-  // Austria Individual Sessions (For History)
+  // Austria Sessions
   db.run(`CREATE TABLE IF NOT EXISTS austria_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -69,6 +77,16 @@ db.serialize(() => {
     end_time INTEGER,
     duration INTEGER,
     date TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Notes / Reminders
+  db.run(`CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    content TEXT,
+    reminder_date TEXT,
+    is_completed INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 });
@@ -112,7 +130,7 @@ app.post('/api/auth/login', (req, res) => {
     
     if (await bcrypt.compare(password, user.password)) {
       const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY);
-      res.json({ token, rate_per_km: user.rate_per_km, username: user.username });
+      res.json({ token, rate_per_km: user.rate_per_km, username: user.username, language: user.language || 'en' });
     } else {
       res.status(403).json({ error: "Invalid password" });
     }
@@ -126,19 +144,28 @@ app.get('/api/data', authenticateToken, (req, res) => {
 
   const response = {
     logs: [],
-    austria_logs: [], // Historical daily aggregates
-    austria_sessions: [], // Detailed sessions history
+    austria_logs: [],
+    austria_sessions: [],
+    notes: [],
     austria: { total_seconds: 0, is_active: false, last_start_timestamp: null },
-    settings: { rate_per_km: 0.12 }
+    settings: { rate_per_km: 0.12, language: 'en' }
   };
 
   db.serialize(() => {
     // Get Settings
-    db.get(`SELECT rate_per_km FROM users WHERE id = ?`, [userId], (err, row) => {
-      if (row) response.settings.rate_per_km = row.rate_per_km;
+    db.get(`SELECT rate_per_km, language FROM users WHERE id = ?`, [userId], (err, row) => {
+      if (row) {
+        response.settings.rate_per_km = row.rate_per_km;
+        response.settings.language = row.language || 'en';
+      }
     });
 
-    // Get Today's Austria Status (Live State)
+    // Get Notes (Active or Future)
+    db.all(`SELECT * FROM notes WHERE user_id = ? ORDER BY reminder_date ASC`, [userId], (err, rows) => {
+      response.notes = rows || [];
+    });
+
+    // Get Today's Austria Status
     db.get(`SELECT * FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
       if (row) {
         response.austria = {
@@ -149,12 +176,12 @@ app.get('/api/data', authenticateToken, (req, res) => {
       }
     });
 
-    // Get Recent Austria Logs (Aggregates)
+    // Get Recent Austria Logs
     db.all(`SELECT * FROM austria_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
       response.austria_logs = rows || [];
     });
 
-    // Get Recent Austria Sessions (Detailed)
+    // Get Recent Austria Sessions
     db.all(`SELECT * FROM austria_sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT 200`, [userId], (err, rows) => {
       response.austria_sessions = rows || [];
     });
@@ -167,12 +194,35 @@ app.get('/api/data', authenticateToken, (req, res) => {
   });
 });
 
-// Update Settings
+// Update Settings (Rate & Language)
 app.post('/api/settings', authenticateToken, (req, res) => {
-  const { rate_per_km } = req.body;
-  db.run(`UPDATE users SET rate_per_km = ? WHERE id = ?`, [rate_per_km, req.user.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true });
+  const { rate_per_km, language } = req.body;
+  
+  if (rate_per_km !== undefined) {
+    db.run(`UPDATE users SET rate_per_km = ? WHERE id = ?`, [rate_per_km, req.user.id]);
+  }
+  
+  if (language !== undefined) {
+    db.run(`UPDATE users SET language = ? WHERE id = ?`, [language, req.user.id]);
+  }
+  
+  res.json({ success: true });
+});
+
+// Notes Routes
+app.post('/api/notes', authenticateToken, (req, res) => {
+  const { content, reminder_date } = req.body;
+  db.run(`INSERT INTO notes (user_id, content, reminder_date) VALUES (?, ?, ?)`, 
+    [req.user.id, content, reminder_date], (err) => {
+      if(err) return res.status(500).json({error: err.message});
+      res.json({success: true});
+  });
+});
+
+app.delete('/api/notes/:id', authenticateToken, (req, res) => {
+  db.run(`DELETE FROM notes WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], (err) => {
+    if(err) return res.status(500).json({error: err.message});
+    res.json({success: true});
   });
 });
 
@@ -180,7 +230,6 @@ app.post('/api/settings', authenticateToken, (req, res) => {
 app.post('/api/logs', authenticateToken, (req, res) => {
   const { id, date, start_km, end_km, wage, total_earnings } = req.body;
   
-  // If ID is provided, it's a specific edit
   if (id) {
     db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=? AND user_id=?`,
       [start_km, end_km, wage, total_earnings, id, req.user.id], (err) => {
@@ -188,7 +237,6 @@ app.post('/api/logs', authenticateToken, (req, res) => {
         res.json({ success: true });
       });
   } else {
-    // Normal save (check by date)
     db.get(`SELECT id FROM daily_logs WHERE user_id = ? AND date = ?`, [req.user.id, date], (err, row) => {
       if (row) {
         db.run(`UPDATE daily_logs SET start_km=?, end_km=?, wage=?, total_earnings=? WHERE id=?`,
@@ -215,29 +263,22 @@ app.post('/api/austria/toggle', authenticateToken, (req, res) => {
 
   db.get(`SELECT * FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
     if (!row) {
-      // First time today, starting
       db.run(`INSERT INTO austria_logs (user_id, date, total_seconds, is_active, last_start_timestamp) VALUES (?, ?, 0, 1, ?)`,
         [userId, today, now], (err) => res.json({ success: true, is_active: true, total_seconds: 0 }));
     } else {
       if (row.is_active) {
-        // Stopping
         const startTime = row.last_start_timestamp;
         const duration = Math.floor((now - startTime) / 1000);
         const newTotal = row.total_seconds + duration;
 
-        // 1. Update Daily Aggregate
         db.run(`UPDATE austria_logs SET total_seconds = ?, is_active = 0, last_start_timestamp = NULL WHERE id = ?`,
           [newTotal, row.id], (err) => {
-            if (err) console.error(err);
-            
-            // 2. Insert Session Record (For History)
             db.run(`INSERT INTO austria_sessions (user_id, start_time, end_time, duration, date) VALUES (?, ?, ?, ?, ?)`,
               [userId, startTime, now, duration, today], (err2) => {
                 res.json({ success: true, is_active: false, total_seconds: newTotal });
               });
           });
       } else {
-        // Starting again
         db.run(`UPDATE austria_logs SET is_active = 1, last_start_timestamp = ? WHERE id = ?`,
           [now, row.id], (err) => res.json({ success: true, is_active: true, total_seconds: row.total_seconds }));
       }
@@ -245,7 +286,6 @@ app.post('/api/austria/toggle', authenticateToken, (req, res) => {
   });
 });
 
-// Catch-all for React
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexPath)) {
