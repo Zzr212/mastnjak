@@ -19,9 +19,9 @@ import { AustriaControls } from './components/AustriaControls';
 import { DailyLog } from './components/DailyLog';
 import { SettingsView } from './components/SettingsView';
 import { ProfileView } from './components/ProfileView';
-import { NotesView } from './components/NotesView'; // New
+import { NotesView } from './components/NotesView'; 
 import { BottomNav } from './components/BottomNav';
-import { Auth } from './components/Auth';
+import { LandingPage } from './components/LandingPage'; // Updated import
 import { formatCurrency, formatDuration } from './utils/formatters';
 import { Language, getTranslation } from './utils/translations';
 
@@ -247,7 +247,7 @@ const App: React.FC = () => {
     return historicalSum + (addToday ? (austriaState.total_seconds + currentSessionSeconds) : 0);
   };
 
-  if (!token) return <Auth onLogin={handleLogin} />;
+  if (!token) return <LandingPage onLogin={handleLogin} />;
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 pb-20 lg:pb-0">
