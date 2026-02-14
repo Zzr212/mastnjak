@@ -22,9 +22,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   useEffect(() => {
     fetch('/api/public/users')
-      .then(res => res.json())
-      .then(data => setPublicUsers(data))
-      .catch(err => console.error(err));
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch');
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) setPublicUsers(data);
+      })
+      .catch(err => console.error("Error fetching public users:", err));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +46,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         body: JSON.stringify({ username, password }),
       });
 
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server error: Invalid response format");
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -54,7 +64,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         onLogin(data.token, data.username || username, (data.language as Language) || 'en');
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || "Connection failed");
     } finally {
       setLoading(false);
     }
