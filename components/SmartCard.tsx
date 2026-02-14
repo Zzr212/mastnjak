@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Calendar, X } from 'lucide-react';
+import { CustomDatePicker } from './CustomDatePicker';
+import { Language } from '../utils/translations';
 
 export type FilterType = 'today' | 'month' | 'custom';
 
@@ -30,6 +32,10 @@ export const SmartCard: React.FC<SmartCardProps> = ({
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  // Default to 'en' since SmartCard doesn't receive lang explicitly, 
+  // but simpler than drilling props down just for this modal. 
+  // Ideally should be passed in.
+  const lang: Language = 'en'; 
 
   const handleTypeSelect = (type: FilterType) => {
     if (type === 'custom') {
@@ -114,18 +120,18 @@ export const SmartCard: React.FC<SmartCardProps> = ({
           </button>
           <h5 className="text-sm font-bold text-slate-800 mb-3">Select Dates</h5>
           <div className="space-y-2 w-full">
-            <input 
-              type="date" 
-              className="w-full text-xs p-2 bg-slate-100 rounded-lg border-0"
-              value={customRange?.start || ''}
-              onChange={(e) => onCustomRangeChange && onCustomRangeChange(e.target.value, customRange?.end || '')}
+            <CustomDatePicker 
+                value={customRange?.start || ''}
+                onChange={(v) => onCustomRangeChange && onCustomRangeChange(v, customRange?.end || '')}
+                lang={lang}
+                className="w-full"
             />
             <span className="text-xs text-slate-400">to</span>
-            <input 
-              type="date" 
-              className="w-full text-xs p-2 bg-slate-100 rounded-lg border-0"
-              value={customRange?.end || ''}
-              onChange={(e) => onCustomRangeChange && onCustomRangeChange(customRange?.start || '', e.target.value)}
+            <CustomDatePicker 
+                value={customRange?.end || ''}
+                onChange={(v) => onCustomRangeChange && onCustomRangeChange(customRange?.start || '', v)}
+                lang={lang}
+                className="w-full"
             />
           </div>
           <button 

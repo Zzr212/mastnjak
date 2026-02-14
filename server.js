@@ -137,7 +137,7 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
-// Register
+// Register (Updated to return token)
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -146,7 +146,11 @@ app.post('/api/auth/register', async (req, res) => {
   db.run(`INSERT INTO users (username, password, created_at, last_active) VALUES (?, ?, ?, ?)`, 
     [username, hashedPassword, now, now], function(err) {
     if (err) return res.status(400).json({ error: "Username already exists" });
-    res.json({ message: "User created" });
+    
+    // Auto-login logic immediately after register
+    const userId = this.lastID;
+    const token = jwt.sign({ id: userId, username: username }, SECRET_KEY);
+    res.json({ message: "User created", token, username, language: 'en' });
   });
 });
 
@@ -274,6 +278,14 @@ app.post('/api/notes', authenticateToken, (req, res) => {
 });
 app.delete('/api/notes/:id', authenticateToken, (req, res) => {
   db.run(`DELETE FROM notes WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], (err) => res.json({success: true}));
+});
+
+// Austria Session Delete Route
+app.delete('/api/austria/session/:id', authenticateToken, (req, res) => {
+  db.run(`DELETE FROM austria_sessions WHERE id = ? AND user_id = ?`, [req.params.id, req.user.id], function(err) {
+      if (err) return res.status(500).json({error: err.message});
+      res.json({ success: true });
+  });
 });
 
 // Logs & Austria Routes (Kept same as before)

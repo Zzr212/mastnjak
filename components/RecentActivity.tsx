@@ -11,9 +11,12 @@ import {
   X,
   MapPin,
   Calendar,
-  ListFilter
+  ListFilter,
+  Trash2
 } from 'lucide-react';
 import { formatCurrency, formatDuration } from '../utils/formatters';
+import { CustomDatePicker } from './CustomDatePicker';
+import { Language } from '../utils/translations';
 
 interface Log {
   id: number;
@@ -36,11 +39,13 @@ interface RecentActivityProps {
   logs: Log[];
   austriaSessions: AustriaSession[];
   onUpdateLog?: (log: Log) => void;
+  onDeleteAustriaSession?: (id: number) => void;
+  lang?: Language; // Add language prop for datepicker
 }
 
 type TabType = 'earnings' | 'austria';
 
-export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSessions, onUpdateLog }) => {
+export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSessions, onUpdateLog, onDeleteAustriaSession, lang = 'en' }) => {
   const [activeTab, setActiveTab] = useState<TabType>('earnings');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -131,7 +136,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
         <div className="flex items-center gap-4 py-4 mt-2">
           <div className="h-px bg-slate-200 flex-1"></div>
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-            {new Date(currDate).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'short' })}
+            {new Date(currDate).toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'bs' ? 'bs-BA' : lang === 'it' ? 'it-IT' : 'en-US', { weekday: 'short', day: '2-digit', month: 'short' })}
           </span>
           <div className="h-px bg-slate-200 flex-1"></div>
         </div>
@@ -168,24 +173,12 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
 
           {/* Date Filter */}
           <div className="flex items-center gap-2">
-             <div className="relative group">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="date" 
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-32"
-                />
+             <div className="w-32">
+                <CustomDatePicker value={dateFrom} onChange={setDateFrom} lang={lang} />
              </div>
              <span className="text-slate-300">-</span>
-             <div className="relative group">
-                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="date" 
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 w-32"
-                />
+             <div className="w-32">
+                <CustomDatePicker value={dateTo} onChange={setDateTo} lang={lang} />
              </div>
           </div>
         </div>
@@ -306,7 +299,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
                  return (
                    <div key={session.id}>
                      {separator}
-                     <div className="p-4 rounded-xl hover:bg-slate-50 border border-transparent flex justify-between items-center">
+                     <div className="p-4 rounded-xl hover:bg-slate-50 border border-transparent flex justify-between items-center group">
                         <div className="flex items-center gap-4">
                            <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
                               <MapPin size={18} />
@@ -323,8 +316,14 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
                               <p className="text-xs text-slate-400 mt-0.5">Austria Entry Session</p>
                            </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex items-center gap-4">
                            <div className="font-mono font-bold text-slate-900">{formatDuration(session.duration)}</div>
+                           <button 
+                             onClick={() => onDeleteAustriaSession && onDeleteAustriaSession(session.id)}
+                             className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                           >
+                             <Trash2 size={16} />
+                           </button>
                         </div>
                      </div>
                    </div>
@@ -346,8 +345,6 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({ logs, austriaSes
             </button>
             
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-              // Simple pagination logic to avoid showing 100 buttons:
-              // Show first, last, current, and neighbours.
               if (
                 p === 1 || 
                 p === totalPages || 

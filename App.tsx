@@ -21,7 +21,7 @@ import { SettingsView } from './components/SettingsView';
 import { ProfileView } from './components/ProfileView';
 import { NotesView } from './components/NotesView'; 
 import { BottomNav } from './components/BottomNav';
-import { LandingPage } from './components/LandingPage'; // Updated import
+import { LandingPage } from './components/LandingPage';
 import { formatCurrency, formatDuration } from './utils/formatters';
 import { Language, getTranslation } from './utils/translations';
 
@@ -216,6 +216,15 @@ const App: React.FC = () => {
       fetchData();
   };
 
+  const handleDeleteAustriaSession = async (id: number) => {
+      if (!confirm(t('confirm') + '?')) return;
+      await fetch(`/api/austria/session/${id}`, {
+          method: 'DELETE',
+          headers: {'Authorization': `Bearer ${token}`}
+      });
+      fetchData();
+  }
+
   // Calculations (Simplified)
   const isDateInMonth = (dateStr: string) => {
     const d = new Date(dateStr); const now = new Date();
@@ -295,7 +304,7 @@ const App: React.FC = () => {
                </button>
                <div className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-white/50 px-4 py-2 rounded-full border border-slate-200 shadow-sm">
                   <CalendarCheck size={16} className="text-indigo-500" />
-                  <span>{new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'de-DE', { weekday: 'short', day: '2-digit', month: 'long' })}</span>
+                  <span>{new Date().toLocaleDateString(language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : language === 'bs' ? 'bs-BA' : 'it-IT', { weekday: 'short', day: '2-digit', month: 'long' })}</span>
                </div>
             </div>
           )}
@@ -326,7 +335,7 @@ const App: React.FC = () => {
               </>
             )}
 
-            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={austriaSessions} onUpdateLog={handleLogUpdate} />}
+            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={austriaSessions} onUpdateLog={handleLogUpdate} onDeleteAustriaSession={handleDeleteAustriaSession} lang={language} />}
             {currentView === 'settings' && <SettingsView ratePerKm={ratePerKm} setRatePerKm={updateSettings} language={language} setLanguage={handleUpdateLanguage} />}
             {currentView === 'profile' && <ProfileView username={username} ratePerKm={ratePerKm} onLogout={handleLogout} onBack={() => setCurrentView('dashboard')} lang={language} />}
             {currentView === 'notes' && <NotesView notes={notes} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} lang={language} />}

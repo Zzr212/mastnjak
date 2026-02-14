@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { Language, getTranslation } from '../utils/translations';
+import { CustomDatePicker } from './CustomDatePicker';
 
 interface Note {
   id: number;
@@ -54,23 +55,21 @@ export const NotesView: React.FC<NotesViewProps> = ({ notes, onAddNote, onDelete
               onChange={(e) => setContent(e.target.value)}
               className="w-full bg-transparent text-lg placeholder-slate-400 border-b-2 border-slate-200 focus:border-indigo-500 focus:outline-none py-2 transition-colors"
             />
-            <div className="flex items-center gap-4">
-               <div className="flex items-center gap-2 bg-slate-100 rounded-full px-4 py-2 text-sm text-slate-600">
-                  <Calendar size={16} />
-                  <input 
-                    type="date" 
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="bg-transparent focus:outline-none text-slate-800 font-medium"
-                    required
+            <div className="flex items-center gap-2">
+               <div className="w-full max-w-[200px]">
+                  <CustomDatePicker 
+                     value={date} 
+                     onChange={setDate} 
+                     lang={lang} 
                   />
                </div>
+               
                <button 
                  type="submit"
                  disabled={!content || !date}
-                 className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white rounded-full p-3 shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                 className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl p-3 shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
                >
-                 <Plus size={24} />
+                 <Plus size={20} />
                </button>
             </div>
          </form>

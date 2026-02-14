@@ -41,7 +41,11 @@ export const translations = {
     password: "Password",
     joinFleet: "Join the Fleet",
     createProfile: "Create your professional profile",
-    poweredBy: "Powered by Mastnak Systems"
+    poweredBy: "Powered by Mastnak Systems",
+    months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    selectDate: "Select Date",
+    cancel: "Cancel",
+    confirm: "Confirm"
   },
   bs: {
     dashboard: "Pregled",
@@ -83,7 +87,11 @@ export const translations = {
     password: "Šifra",
     joinFleet: "Pridruži se",
     createProfile: "Kreirajte profesionalni profil",
-    poweredBy: "Pokreće Mastnak Systems"
+    poweredBy: "Pokreće Mastnak Systems",
+    months: ["Januar", "Februar", "Mart", "April", "Maj", "Juni", "Juli", "August", "Septembar", "Oktobar", "Novembar", "Decembar"],
+    selectDate: "Odaberi Datum",
+    cancel: "Otkaži",
+    confirm: "Potvrdi"
   },
   de: {
     dashboard: "Übersicht",
@@ -125,7 +133,11 @@ export const translations = {
     password: "Passwort",
     joinFleet: "Beitreten",
     createProfile: "Erstellen Sie Ihr Profil",
-    poweredBy: "Powered by Mastnak Systems"
+    poweredBy: "Powered by Mastnak Systems",
+    months: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+    selectDate: "Datum wählen",
+    cancel: "Abbrechen",
+    confirm: "Bestätigen"
   },
   it: {
     dashboard: "Dashboard",
@@ -167,7 +179,11 @@ export const translations = {
     password: "Password",
     joinFleet: "Unisciti",
     createProfile: "Crea il tuo profilo professionale",
-    poweredBy: "Powered by Mastnak Systems"
+    poweredBy: "Powered by Mastnak Systems",
+    months: ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"],
+    selectDate: "Seleziona Data",
+    cancel: "Annulla",
+    confirm: "Conferma"
   }
 };
 

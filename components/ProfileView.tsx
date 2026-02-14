@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { User, LogOut, ShieldCheck, Camera, Upload } from 'lucide-react';
+import { User, LogOut, Camera, Upload } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { Language, getTranslation } from '../utils/translations';
 import { getRole } from '../utils/roles';
@@ -33,14 +33,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
       formData.append('image', e.target.files[0]);
       formData.append('type', type);
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: formData
-      });
-      const data = await res.json();
-      if (data.path) {
-        setUserInfo({ ...userInfo, [type === 'profile' ? 'profile_image' : 'cover_image']: data.path });
+      try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.path) {
+            // Update the correct key in state based on upload type
+            setUserInfo((prev: any) => ({
+                ...prev,
+                [type === 'profile' ? 'profile_image' : 'cover_image']: data.path
+            }));
+        }
+      } catch (err) {
+        console.error("Upload failed", err);
       }
     }
   };
@@ -67,7 +75,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
            />
            <button 
              onClick={() => coverInputRef.current?.click()}
-             className="absolute bottom-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+             className="absolute bottom-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
            >
              <Camera size={16} />
            </button>
