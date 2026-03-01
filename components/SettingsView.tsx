@@ -34,7 +34,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ ratePerKm, setRatePe
               <h3 className="text-lg font-bold text-slate-800">{t('language')}</h3>
            </div>
            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(['en', 'bs', 'de', 'it'] as Language[]).map(lang => (
+              {(['en', 'bs', 'de', 'it', 'sl'] as Language[]).map(lang => (
                 <button
                   key={lang}
                   onClick={() => setLanguage(lang)}

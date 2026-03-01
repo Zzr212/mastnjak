@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { User, LogOut, Camera, Upload } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { User, LogOut, Camera, Upload, Key, Clock, Eye, Copy, Check } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { Language, getTranslation } from '../utils/translations';
 import { getRole } from '../utils/roles';
@@ -17,14 +17,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
   const [userInfo, setUserInfo] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  
+  // Visitor Code State
+  const [visitorLogs, setVisitorLogs] = useState<any[]>([]);
+  const [duration, setDuration] = useState(24); // hours
+  const [generatedCode, setGeneratedCode] = useState<{code: string, expires_at: string} | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Fetch user detailed info on mount
-  React.useEffect(() => {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     fetch('/api/data', { 
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(data => setUserInfo(data.user_info));
+
+    fetch('/api/visitor/logs', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setVisitorLogs(data));
   }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
@@ -50,6 +65,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
       } catch (err) {
         console.error("Upload failed", err);
       }
+    }
+  };
+
+  const handleCreateCode = async () => {
+    try {
+      const res = await fetch('/api/visitor/create', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        },
+        body: JSON.stringify({ durationHours: duration })
+      });
+      const data = await res.json();
+      setGeneratedCode(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (generatedCode) {
+      navigator.clipboard.writeText(generatedCode.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -134,6 +174,75 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
                     Active
                  </p>
               </div>
+           </div>
+
+           {/* Visitor Code Section */}
+           <div className="bg-indigo-50/50 rounded-2xl p-5 border border-indigo-100 mb-8">
+              <div className="flex items-center gap-2 mb-4 text-indigo-900">
+                 <Key size={18} />
+                 <h3 className="font-bold">{t('visitorCode')}</h3>
+              </div>
+              
+              {!generatedCode ? (
+                <div className="space-y-3">
+                   <div>
+                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('codeDuration')}</label>
+                     <select 
+                       value={duration} 
+                       onChange={(e) => setDuration(parseInt(e.target.value))}
+                       className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                     >
+                       <option value={1}>1 {t('hours')}</option>
+                       <option value={24}>24 {t('hours')}</option>
+                       <option value={168}>7 Days</option>
+                     </select>
+                   </div>
+                   <button 
+                     onClick={handleCreateCode}
+                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                   >
+                     {t('createVisitorCode')}
+                   </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
+                   <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{t('activeCode')}</p>
+                   <div className="flex items-center justify-between gap-2 mb-2">
+                      <code className="text-2xl font-black text-indigo-600 tracking-widest">{generatedCode.code}</code>
+                      <button onClick={copyToClipboard} className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600">
+                        {copied ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                      </button>
+                   </div>
+                   <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg w-fit">
+                      <Clock size={10} />
+                      <span>{t('expiresIn')} {new Date(generatedCode.expires_at).toLocaleString()}</span>
+                   </div>
+                   <button 
+                     onClick={() => setGeneratedCode(null)}
+                     className="mt-3 text-xs text-red-400 hover:text-red-500 font-medium underline"
+                   >
+                     Revoke / Create New
+                   </button>
+                </div>
+              )}
+
+              {/* Visitor Logs */}
+              {visitorLogs.length > 0 && (
+                <div className="mt-6">
+                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t('visitorLogs')}</h4>
+                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1 scrollbar-hide">
+                      {visitorLogs.map((log: any) => (
+                        <div key={log.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-100">
+                           <div className="flex items-center gap-2 text-slate-600">
+                              <Eye size={12} className="text-indigo-400" />
+                              <span>Accessed via code <span className="font-mono font-bold">{log.visitor_code}</span></span>
+                           </div>
+                           <span className="text-slate-400">{new Date(log.accessed_at).toLocaleString()}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              )}
            </div>
 
            {/* Logout Button */}

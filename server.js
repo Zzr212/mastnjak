@@ -115,6 +115,21 @@ db.serialize(() => {
     is_completed INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS visitor_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    code TEXT UNIQUE,
+    expires_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS visitor_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    visitor_code TEXT,
+    accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 });
 
 // --- Auth Middleware ---
@@ -358,6 +373,83 @@ app.post('/api/austria/toggle', authenticateToken, (req, res) => {
           [now, row.id], () => res.json({ success: true, is_active: true, total_seconds: row.total_seconds }));
       }
     }
+  });
+});
+
+// --- Visitor Routes ---
+
+// Create Visitor Code
+app.post('/api/visitor/create', authenticateToken, (req, res) => {
+  const { durationHours } = req.body; // duration in hours
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+  
+  db.run(`INSERT INTO visitor_codes (user_id, code, expires_at) VALUES (?, ?, ?)`, 
+    [req.user.id, code, expiresAt], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ code, expires_at: expiresAt });
+  });
+});
+
+// Get Visitor Logs (for owner)
+app.get('/api/visitor/logs', authenticateToken, (req, res) => {
+  db.all(`SELECT * FROM visitor_logs WHERE user_id = ? ORDER BY accessed_at DESC LIMIT 50`, [req.user.id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Access via Visitor Code (Public)
+app.post('/api/visitor/access', (req, res) => {
+  const { code } = req.body;
+  const now = new Date().toISOString();
+
+  db.get(`SELECT * FROM visitor_codes WHERE code = ? AND expires_at > ?`, [code, now], (err, visitorCode) => {
+    if (err || !visitorCode) return res.status(403).json({ error: "Invalid or expired code" });
+
+    const userId = visitorCode.user_id;
+
+    // Log access
+    db.run(`INSERT INTO visitor_logs (user_id, visitor_code) VALUES (?, ?)`, [userId, code]);
+
+    // Fetch user data (similar to /api/data but read-only and limited)
+    const response = {
+      logs: [],
+      austria_logs: [],
+      austria_sessions: [],
+      austria: { total_seconds: 0 },
+      settings: { rate_per_km: 0.12 },
+      user_info: {},
+      expires_at: visitorCode.expires_at
+    };
+
+    db.serialize(() => {
+      db.get(`SELECT rate_per_km, username, profile_image, cover_image, created_at, last_active FROM users WHERE id = ?`, [userId], (err, row) => {
+        if (row) {
+          response.settings.rate_per_km = row.rate_per_km;
+          response.user_info = {
+            username: row.username,
+            profile_image: row.profile_image,
+            cover_image: row.cover_image,
+            created_at: row.created_at,
+            last_active: row.last_active
+          };
+        }
+      });
+
+      db.get(`SELECT total_seconds FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, now.split('T')[0]], (err, row) => {
+        if (row) response.austria.total_seconds = row.total_seconds;
+      });
+
+      db.all(`SELECT * FROM austria_logs WHERE user_id = ? ORDER BY date DESC LIMIT 30`, [userId], (err, rows) => {
+        response.austria_logs = rows || [];
+      });
+      
+      db.all(`SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT 30`, [userId], (err, rows) => {
+        response.logs = rows || [];
+        res.json(response);
+      });
+    });
   });
 });
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Lock, ArrowRight, CheckCircle2, ChevronRight, Clock } from 'lucide-react';
+import { User, Lock, ArrowRight, CheckCircle2, ChevronRight, Clock, Key } from 'lucide-react';
 import { Language, translations } from '../utils/translations';
 import { getRole } from '../utils/roles';
+import { VisitorDashboard } from './VisitorDashboard';
 
 interface LandingPageProps {
   onLogin: (token: string, username: string, lang: Language) => void;
@@ -9,9 +10,12 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [showLogin, setShowLogin] = useState(false);
+  const [showVisitorInput, setShowVisitorInput] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [visitorCode, setVisitorCode] = useState('');
+  const [visitorData, setVisitorData] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false); // New state for reg animation
@@ -74,6 +78,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
+  const handleVisitorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/visitor/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: visitorCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid code');
+      setVisitorData(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (visitorData) {
+    return <VisitorDashboard data={visitorData} onClose={() => setVisitorData(null)} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 font-sans text-slate-100 overflow-x-hidden relative selection:bg-indigo-500/30">
       
@@ -112,7 +141,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
            MASTNAK
         </div>
         <button 
-          onClick={() => setShowLogin(!showLogin)}
+          onClick={() => { setShowLogin(!showLogin); setShowVisitorInput(false); }}
           className="bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 border border-white/20 px-6 py-2 rounded-full font-bold text-sm transition-all shadow-lg shadow-white/5"
         >
           {showLogin ? 'Close' : 'Login / Register'}
@@ -156,6 +185,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </>
              )}
            </div>
+         ) : showVisitorInput ? (
+            // VISITOR CODE INPUT
+            <div className="max-w-md mx-auto w-full animate-in fade-in slide-in-from-bottom-10 duration-500">
+               <h2 className="text-3xl font-bold mb-8 drop-shadow-lg">Visitor Access</h2>
+               {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg mb-4 text-sm backdrop-blur-md">{error}</div>}
+               <form onSubmit={handleVisitorSubmit} className="space-y-4">
+                  <div className="relative group">
+                     <div className="absolute left-4 top-4 text-slate-400 group-focus-within:text-white transition-colors"><Key size={20} /></div>
+                     <input type="text" required value={visitorCode} onChange={(e) => setVisitorCode(e.target.value.toUpperCase())} className="w-full pl-12 pr-4 py-4 bg-slate-950/60 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all backdrop-blur-md shadow-xl font-mono tracking-widest uppercase" placeholder="ENTER CODE" />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all flex items-center justify-center gap-2 active:scale-95 mt-4 hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]">
+                    {loading ? 'Verifying...' : 'Access Dashboard'} <ArrowRight size={20} />
+                  </button>
+               </form>
+               <button onClick={() => setShowVisitorInput(false)} className="mt-6 text-slate-400 hover:text-white text-sm font-medium transition-colors">
+                 Cancel
+               </button>
+            </div>
          ) : (
            // HERO TEXT
            <div className="max-w-3xl mx-auto">
@@ -165,20 +212,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
              <p className="entrance-anim text-lg md:text-xl text-indigo-100/70 mb-10 max-w-2xl mx-auto leading-relaxed" style={{animationDelay: '0.2s'}}>
                The ultimate dashboard for professional drivers. Track earnings, monitor Austria transit times, and manage your schedule with precision.
              </p>
-             <button 
-                onClick={() => setShowLogin(true)}
-                className="entrance-anim group relative bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_30px_rgba(79,70,229,0.4)] transition-all hover:scale-105 active:scale-95 overflow-hidden"
-                style={{animationDelay: '0.4s'}}
-             >
-                <span className="relative z-10 flex items-center gap-2">Start Tracking Now <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/></span>
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-             </button>
+             <div className="flex flex-col items-center gap-4">
+               <button 
+                  onClick={() => setShowLogin(true)}
+                  className="entrance-anim group relative bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_30px_rgba(79,70,229,0.4)] transition-all hover:scale-105 active:scale-95 overflow-hidden"
+                  style={{animationDelay: '0.4s'}}
+               >
+                  <span className="relative z-10 flex items-center gap-2">Start Tracking Now <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/></span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+               </button>
+               
+               <button 
+                 onClick={() => setShowVisitorInput(true)}
+                 className="entrance-anim text-xs font-bold text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2"
+                 style={{animationDelay: '0.6s'}}
+               >
+                 <Key size={12} />
+                 Visitor Code
+               </button>
+             </div>
            </div>
          )}
       </section>
 
       {/* --- PUBLIC USERS CAROUSEL --- */}
-      {!showLogin && (
+      {!showLogin && !showVisitorInput && (
         <section className="relative z-20 pb-20 overflow-hidden">
           <div className="px-6 mb-4 max-w-7xl mx-auto">
              <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2 flex items-center gap-2">

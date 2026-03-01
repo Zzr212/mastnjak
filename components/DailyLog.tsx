@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Calculator, Wallet, CheckCircle, Loader2 } from 'lucide-react';
+import { Save, Calculator, Wallet, CheckCircle, Loader2, Calendar } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 interface DailyLogData {
@@ -7,6 +7,7 @@ interface DailyLogData {
   end_km: number;
   wage: number;
   total_earnings: number;
+  date?: string;
 }
 
 interface DailyLogProps {
@@ -18,6 +19,10 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
   const [startKm, setStartKm] = useState<string>('');
   const [endKm, setEndKm] = useState<string>('');
   const [dailyWage, setDailyWage] = useState<string>('');
+  
+  // Date selection state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   
   // Status state for the button
   const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -40,12 +45,12 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
     if (total > 0) {
       setStatus('saving');
       
-      // Simulate API call delay for effect or wait for real implementation via onSave promise
       await onSave({
         start_km: start,
         end_km: end,
         wage: wage,
-        total_earnings: total
+        total_earnings: total,
+        date: selectedDate
       });
 
       setStatus('success');
@@ -54,6 +59,9 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
       setStartKm('');
       setEndKm('');
       setDailyWage('');
+      // Reset date to today
+      setSelectedDate(new Date().toISOString().split('T')[0]);
+      setShowDatePicker(false);
 
       // Reset button after 3 seconds
       setTimeout(() => {
@@ -64,12 +72,43 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <div className="p-2 bg-slate-900 text-white rounded-lg">
-          <Wallet size={20} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-slate-900 text-white rounded-lg">
+            <Wallet size={20} />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800">Daily Entry</h3>
         </div>
-        <h3 className="text-lg font-semibold text-slate-800">Daily Entry</h3>
+        
+        <div className="relative">
+          <button 
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className={`p-2 rounded-lg transition-colors ${showDatePicker || selectedDate !== new Date().toISOString().split('T')[0] ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+          >
+            <Calendar size={18} />
+          </button>
+          
+          {showDatePicker && (
+            <div className="absolute right-0 top-full mt-2 bg-white p-3 rounded-xl shadow-xl border border-slate-100 z-10 animate-in fade-in slide-in-from-top-2">
+              <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Select Date</label>
+              <input 
+                type="date" 
+                value={selectedDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+        </div>
       </div>
+
+      {selectedDate !== new Date().toISOString().split('T')[0] && (
+        <div className="mb-4 text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg flex items-center gap-2">
+          <Calendar size={12} />
+          Entry for: {new Date(selectedDate).toLocaleDateString()}
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
