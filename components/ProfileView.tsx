@@ -29,6 +29,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
   const [endDate, setEndDate] = useState('');
   
   const [copiedCodeId, setCopiedCodeId] = useState<number | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationSuccess, setGenerationSuccess] = useState<string | null>(null);
 
   // Fetch user detailed info on mount
   useEffect(() => {
@@ -56,8 +59,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
     fetch('/api/visitor/codes', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => res.json())
-    .then(data => setVisitorCodes(data));
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch codes");
+        return res.json();
+    })
+    .then(data => {
+        if (Array.isArray(data)) {
+            setVisitorCodes(data);
+        } else {
+            console.error("Visitor codes response is not an array:", data);
+        }
+    })
+    .catch(err => console.error("Error fetching visitor codes:", err));
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
@@ -87,6 +100,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
   };
 
   const handleCreateCode = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
+    setGenerationSuccess(null);
+
     try {
       const payload = {
         durationHours: duration,
@@ -102,26 +119,46 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
         },
         body: JSON.stringify(payload)
       });
+      
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create code");
+      }
+
       if (data.code) {
+        setGenerationSuccess("Code generated successfully!");
         fetchVisitorCodes(); // Refresh list
         // Reset form
         setAccessType('all');
         setStartDate('');
         setEndDate('');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setGenerationSuccess(null), 3000);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Error creating code:", err);
+      setGenerationError(err.message || "An error occurred");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   const handleDeleteCode = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this code?")) return;
+    
     try {
-      await fetch(`/api/visitor/code/${id}`, {
+      const res = await fetch(`/api/visitor/code/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      fetchVisitorCodes();
+      
+      if (res.ok) {
+          fetchVisitorCodes();
+      } else {
+          console.error("Failed to delete code");
+      }
     } catch (err) {
       console.error(err);
     }
@@ -277,11 +314,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
 
                  <button 
                    onClick={handleCreateCode}
-                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                   disabled={isGenerating}
+                   className={`w-full py-2 rounded-lg text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 ${
+                     isGenerating 
+                       ? 'bg-indigo-400 cursor-not-allowed text-white' 
+                       : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 active:scale-95'
+                   }`}
                  >
-                   <Key size={12} />
-                   {t('generateCode')}
+                   {isGenerating ? (
+                     <>
+                       <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                       Generating...
+                     </>
+                   ) : (
+                     <>
+                       <Key size={12} />
+                       {t('generateCode')}
+                     </>
+                   )}
                  </button>
+                 
+                 {generationError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg text-[10px] text-red-600 text-center">
+                        {generationError}
+                    </div>
+                 )}
+                 
+                 {generationSuccess && (
+                    <div className="mt-2 p-2 bg-emerald-50 border border-emerald-100 rounded-lg text-[10px] text-emerald-600 text-center flex items-center justify-center gap-1">
+                        <Check size={10} /> {generationSuccess}
+                    </div>
+                 )}
               </div>
 
               {/* Active Codes List */}
