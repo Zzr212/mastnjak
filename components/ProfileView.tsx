@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { User, LogOut, Camera, Upload, Key, Clock, Eye, Copy, Check } from 'lucide-react';
+import { User, LogOut, Camera, Upload, Key, Clock, Eye, Copy, Check, Trash2, Calendar } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { Language, getTranslation } from '../utils/translations';
 import { getRole } from '../utils/roles';
@@ -20,9 +20,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
   
   // Visitor Code State
   const [visitorLogs, setVisitorLogs] = useState<any[]>([]);
+  const [visitorCodes, setVisitorCodes] = useState<any[]>([]);
+  
+  // Create Form State
   const [duration, setDuration] = useState(24); // hours
-  const [generatedCode, setGeneratedCode] = useState<{code: string, expires_at: string} | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [accessType, setAccessType] = useState<'all' | 'custom'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
+  const [copiedCodeId, setCopiedCodeId] = useState<number | null>(null);
 
   // Fetch user detailed info on mount
   useEffect(() => {
@@ -40,7 +46,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
     })
     .then(res => res.json())
     .then(data => setVisitorLogs(data));
+
+    fetchVisitorCodes();
   }, []);
+
+  const fetchVisitorCodes = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/visitor/codes', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => setVisitorCodes(data));
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
     if (e.target.files && e.target.files[0]) {
@@ -70,27 +88,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
 
   const handleCreateCode = async () => {
     try {
+      const payload = {
+        durationHours: duration,
+        accessStartDate: accessType === 'custom' ? startDate : null,
+        accessEndDate: accessType === 'custom' ? endDate : null
+      };
+
       const res = await fetch('/api/visitor/create', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         },
-        body: JSON.stringify({ durationHours: duration })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
-      setGeneratedCode(data);
+      if (data.code) {
+        fetchVisitorCodes(); // Refresh list
+        // Reset form
+        setAccessType('all');
+        setStartDate('');
+        setEndDate('');
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
-  const copyToClipboard = () => {
-    if (generatedCode) {
-      navigator.clipboard.writeText(generatedCode.code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleDeleteCode = async (id: number) => {
+    try {
+      await fetch(`/api/visitor/code/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      fetchVisitorCodes();
+    } catch (err) {
+      console.error(err);
     }
+  };
+
+  const copyToClipboard = (code: string, id: number) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodeId(id);
+    setTimeout(() => setCopiedCodeId(null), 2000);
   };
 
   const role = userInfo ? getRole(userInfo.created_at) : { label: '...', color: '', bg: '', icon: '' };
@@ -183,52 +223,107 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
                  <h3 className="font-bold">{t('visitorCode')}</h3>
               </div>
               
-              {!generatedCode ? (
-                <div className="space-y-3">
+              {/* Create New Code Form */}
+              <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                 <div className="grid grid-cols-2 gap-3">
                    <div>
-                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('codeDuration')}</label>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t('codeDuration')}</label>
                      <select 
                        value={duration} 
                        onChange={(e) => setDuration(parseInt(e.target.value))}
-                       className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                      >
                        <option value={1}>1 {t('hours')}</option>
                        <option value={24}>24 {t('hours')}</option>
                        <option value={168}>7 Days</option>
+                       <option value={720}>30 Days</option>
                      </select>
                    </div>
-                   <button 
-                     onClick={handleCreateCode}
-                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95"
-                   >
-                     {t('createVisitorCode')}
-                   </button>
-                </div>
+                   <div>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t('dataAccess')}</label>
+                     <select 
+                       value={accessType} 
+                       onChange={(e) => setAccessType(e.target.value as 'all' | 'custom')}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                     >
+                       <option value="all">{t('allTime')}</option>
+                       <option value="custom">{t('customRange')}</option>
+                     </select>
+                   </div>
+                 </div>
+
+                 {accessType === 'custom' && (
+                   <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                     <div>
+                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t('startDate')}</label>
+                       <input 
+                         type="date" 
+                         value={startDate}
+                         onChange={(e) => setStartDate(e.target.value)}
+                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                       />
+                     </div>
+                     <div>
+                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t('endDate')}</label>
+                       <input 
+                         type="date" 
+                         value={endDate}
+                         onChange={(e) => setEndDate(e.target.value)}
+                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                       />
+                     </div>
+                   </div>
+                 )}
+
+                 <button 
+                   onClick={handleCreateCode}
+                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                 >
+                   <Key size={12} />
+                   {t('generateCode')}
+                 </button>
+              </div>
+
+              {/* Active Codes List */}
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t('activeCodes')}</h4>
+              {visitorCodes.length === 0 ? (
+                <p className="text-xs text-slate-400 italic mb-4">{t('noCodes')}</p>
               ) : (
-                <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
-                   <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{t('activeCode')}</p>
-                   <div className="flex items-center justify-between gap-2 mb-2">
-                      <code className="text-2xl font-black text-indigo-600 tracking-widest">{generatedCode.code}</code>
-                      <button onClick={copyToClipboard} className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-indigo-600">
-                        {copied ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
-                      </button>
-                   </div>
-                   <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg w-fit">
-                      <Clock size={10} />
-                      <span>{t('expiresIn')} {new Date(generatedCode.expires_at).toLocaleString()}</span>
-                   </div>
-                   <button 
-                     onClick={() => setGeneratedCode(null)}
-                     className="mt-3 text-xs text-red-400 hover:text-red-500 font-medium underline"
-                   >
-                     Revoke / Create New
-                   </button>
+                <div className="space-y-3 mb-6">
+                  {visitorCodes.map((code) => {
+                    const isExpired = new Date(code.expires_at) < new Date();
+                    return (
+                      <div key={code.id} className={`bg-white rounded-xl p-3 border ${isExpired ? 'border-red-100 opacity-60' : 'border-indigo-100'} shadow-sm relative group`}>
+                         <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <code className="text-lg font-black text-indigo-600 tracking-widest bg-indigo-50 px-2 rounded">{code.code}</code>
+                              <button onClick={() => copyToClipboard(code.code, code.id)} className="p-1 hover:bg-slate-100 rounded transition-colors text-slate-400 hover:text-indigo-600">
+                                {copiedCodeId === code.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                              </button>
+                            </div>
+                            <button onClick={() => handleDeleteCode(code.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                              <Trash2 size={14} />
+                            </button>
+                         </div>
+                         <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                            <span className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded">
+                              <Clock size={10} /> {isExpired ? 'Expired' : `${t('expiresIn')} ${new Date(code.expires_at).toLocaleDateString()}`}
+                            </span>
+                            {code.access_start_date && (
+                              <span className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded">
+                                <Calendar size={10} /> {new Date(code.access_start_date).toLocaleDateString()} - {code.access_end_date ? new Date(code.access_end_date).toLocaleDateString() : 'Now'}
+                              </span>
+                            )}
+                         </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               {/* Visitor Logs */}
               {visitorLogs.length > 0 && (
-                <div className="mt-6">
+                <div className="mt-6 pt-6 border-t border-indigo-100/50">
                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{t('visitorLogs')}</h4>
                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1 scrollbar-hide">
                       {visitorLogs.map((log: any) => (

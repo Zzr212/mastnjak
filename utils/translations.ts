@@ -56,7 +56,15 @@ export const translations = {
     enterVisitorCode: "Enter Visitor Code",
     accessDashboard: "Access Dashboard",
     visitorMode: "Visitor Mode",
-    hours: "Hours"
+    hours: "Hours",
+    dataAccess: "Data Access",
+    allTime: "All Time",
+    customRange: "Custom Range",
+    startDate: "Start Date",
+    endDate: "End Date",
+    activeCodes: "Active Codes",
+    delete: "Delete",
+    noCodes: "No active codes."
   },
   bs: {
     dashboard: "Pregled",
@@ -113,7 +121,15 @@ export const translations = {
     enterVisitorCode: "Unesi Visitor Kod",
     accessDashboard: "Pristupi",
     visitorMode: "Visitor Mod",
-    hours: "Sati"
+    hours: "Sati",
+    dataAccess: "Pristup Podacima",
+    allTime: "Sve Vrijeme",
+    customRange: "Određeni Period",
+    startDate: "Od",
+    endDate: "Do",
+    activeCodes: "Aktivni Kodovi",
+    delete: "Obriši",
+    noCodes: "Nema aktivnih kodova."
   },
   de: {
     dashboard: "Übersicht",
@@ -170,7 +186,15 @@ export const translations = {
     enterVisitorCode: "Besuchercode eingeben",
     accessDashboard: "Zugriff",
     visitorMode: "Besuchermodus",
-    hours: "Stunden"
+    hours: "Stunden",
+    dataAccess: "Datenzugriff",
+    allTime: "Gesamte Zeit",
+    customRange: "Benutzerdefiniert",
+    startDate: "Startdatum",
+    endDate: "Enddatum",
+    activeCodes: "Aktive Codes",
+    delete: "Löschen",
+    noCodes: "Keine aktiven Codes."
   },
   it: {
     dashboard: "Dashboard",
@@ -227,7 +251,15 @@ export const translations = {
     enterVisitorCode: "Inserisci Codice",
     accessDashboard: "Accedi",
     visitorMode: "Modalità Visitatore",
-    hours: "Ore"
+    hours: "Ore",
+    dataAccess: "Accesso Dati",
+    allTime: "Tutto il Tempo",
+    customRange: "Periodo Personalizzato",
+    startDate: "Data Inizio",
+    endDate: "Data Fine",
+    activeCodes: "Codici Attivi",
+    delete: "Elimina",
+    noCodes: "Nessun codice attivo."
   },
   sl: {
     dashboard: "Pregled",
@@ -284,7 +316,15 @@ export const translations = {
     enterVisitorCode: "Vnesi Visitor Kodo",
     accessDashboard: "Dostop",
     visitorMode: "Visitor Način",
-    hours: "Ur"
+    hours: "Ur",
+    dataAccess: "Dostop do Podatkov",
+    allTime: "Vse Obdobje",
+    customRange: "Obdobje po meri",
+    startDate: "Od",
+    endDate: "Do",
+    activeCodes: "Aktivne Kode",
+    delete: "Izbriši",
+    noCodes: "Ni aktivnih kod."
   }
 };
 
