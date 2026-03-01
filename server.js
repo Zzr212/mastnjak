@@ -405,7 +405,7 @@ app.get('/api/visitor/codes', authenticateToken, (req, res) => {
 app.post('/api/visitor/create', authenticateToken, (req, res) => {
   const { durationHours, accessStartDate, accessEndDate } = req.body; // duration in hours
   const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + Number(durationHours) * 60 * 60 * 1000).toISOString();
   
   db.run(`INSERT INTO visitor_codes (user_id, code, expires_at, access_start_date, access_end_date) VALUES (?, ?, ?, ?, ?)`, 
     [req.user.id, code, expiresAt, accessStartDate || null, accessEndDate || null], function(err) {

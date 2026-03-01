@@ -105,22 +105,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ username, ratePerKm, o
     setGenerationSuccess(null);
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const payload = {
-        durationHours: duration,
-        accessStartDate: accessType === 'custom' ? startDate : null,
-        accessEndDate: accessType === 'custom' ? endDate : null
+        durationHours: Number(duration),
+        accessStartDate: accessType === 'custom' && startDate ? startDate : null,
+        accessEndDate: accessType === 'custom' && endDate ? endDate : null
       };
+
+      console.log("Sending payload:", payload);
 
       const res = await fetch('/api/visitor/create', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          'Authorization': `Bearer ${token.trim()}` 
         },
         body: JSON.stringify(payload)
       });
       
-      const data = await res.json();
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
       
       if (!res.ok) {
         throw new Error(data.error || "Failed to create code");
