@@ -16,6 +16,7 @@ interface SmartCardProps {
   subtitle?: string;
   trend?: string;
   trendUp?: boolean;
+  ratePerKm?: number;
 }
 
 export const SmartCard: React.FC<SmartCardProps> = ({ 
@@ -28,7 +29,8 @@ export const SmartCard: React.FC<SmartCardProps> = ({
   onCustomRangeChange,
   subtitle,
   trend,
-  trendUp
+  trendUp,
+  ratePerKm
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -61,7 +63,14 @@ export const SmartCard: React.FC<SmartCardProps> = ({
       {/* Header with Filter */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex flex-col">
-          <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{title}</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{title}</h4>
+            {ratePerKm !== undefined && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                €{ratePerKm.toFixed(2)}/km
+              </span>
+            )}
+          </div>
           
           <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}

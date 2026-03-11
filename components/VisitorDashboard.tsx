@@ -10,12 +10,11 @@ interface VisitorDashboardProps {
 }
 
 export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClose }) => {
-  const { user_info, settings, logs, austria_logs, austria } = data;
+  const { user_info, settings, logs } = data;
   const role = user_info ? getRole(user_info.created_at) : { label: 'Driver', color: 'text-slate-500', bg: 'bg-slate-100', icon: '🚛' };
 
   // Calculate totals
   const totalEarnings = logs.reduce((acc: number, log: any) => acc + (log.total_earnings || 0), 0);
-  const totalAustriaSeconds = austria_logs.reduce((acc: number, log: any) => acc + (log.total_seconds || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-50 relative">
@@ -44,14 +43,10 @@ export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClos
             </button>
          </div>
 
-         <div className="relative z-10 grid grid-cols-2 gap-4">
+         <div className="relative z-10 grid grid-cols-1 gap-4">
             <div className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl">
                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Earnings</p>
                <p className="text-2xl font-black">{formatCurrency(totalEarnings)}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl">
-               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Austria Time</p>
-               <p className="text-2xl font-black">{formatDuration(totalAustriaSeconds)}</p>
             </div>
          </div>
       </div>

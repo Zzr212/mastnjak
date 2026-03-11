@@ -236,15 +236,11 @@ app.get('/api/public/users', (req, res) => {
 
 // Get Dashboard Data
 app.get('/api/data', authenticateToken, (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
   const userId = req.user.id;
 
   const response = {
     logs: [],
-    austria_logs: [],
-    austria_sessions: [],
     notes: [],
-    austria: { total_seconds: 0, is_active: false, last_start_timestamp: null },
     settings: { rate_per_km: 0.12, language: 'en' },
     user_info: {}
   };
@@ -263,28 +259,12 @@ app.get('/api/data', authenticateToken, (req, res) => {
       }
     });
 
-    // ... rest of data fetching ...
     // Get Notes
     db.all(`SELECT * FROM notes WHERE user_id = ? ORDER BY reminder_date ASC`, [userId], (err, rows) => {
       response.notes = rows || [];
     });
-    // Get Austria Status
-    db.get(`SELECT * FROM austria_logs WHERE user_id = ? AND date = ?`, [userId, today], (err, row) => {
-      if (row) {
-        response.austria = {
-          total_seconds: row.total_seconds,
-          is_active: !!row.is_active,
-          last_start_timestamp: row.last_start_timestamp
-        };
-      }
-    });
+    
     // Logs
-    db.all(`SELECT * FROM austria_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
-      response.austria_logs = rows || [];
-    });
-    db.all(`SELECT * FROM austria_sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT 200`, [userId], (err, rows) => {
-      response.austria_sessions = rows || [];
-    });
     db.all(`SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT 90`, [userId], (err, rows) => {
       response.logs = rows || [];
       res.json(response);
@@ -447,9 +427,6 @@ app.post('/api/visitor/access', (req, res) => {
     // Fetch user data (similar to /api/data but read-only and limited)
     const response = {
       logs: [],
-      austria_logs: [],
-      austria_sessions: [],
-      austria: { total_seconds: 0 },
       settings: { rate_per_km: 0.12 },
       user_info: {},
       expires_at: visitorCode.expires_at,
@@ -482,17 +459,6 @@ app.post('/api/visitor/access', (req, res) => {
         dateFilter += " AND date <= ?";
         params.push(access_end_date);
       }
-
-      // Austria total seconds (filtered)
-      let austriaQuery = `SELECT SUM(total_seconds) as total FROM austria_logs WHERE user_id = ? ${dateFilter}`;
-      db.get(austriaQuery, params, (err, row) => {
-        if (row) response.austria.total_seconds = row.total || 0;
-      });
-
-      // Austria logs (filtered)
-      db.all(`SELECT * FROM austria_logs WHERE user_id = ? ${dateFilter} ORDER BY date DESC LIMIT 100`, params, (err, rows) => {
-        response.austria_logs = rows || [];
-      });
       
       // Daily logs (filtered)
       db.all(`SELECT * FROM daily_logs WHERE user_id = ? ${dateFilter} ORDER BY date DESC LIMIT 100`, params, (err, rows) => {

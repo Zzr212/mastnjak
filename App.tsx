@@ -9,13 +9,14 @@ import {
   MapPin,
   RefreshCw,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Plus,
+  X
 } from 'lucide-react';
 import { SmartCard, FilterType } from './components/SmartCard'; 
 import { StatCard } from './components/StatCard'; 
 import { RevenueChart } from './components/RevenueChart';
 import { RecentActivity } from './components/RecentActivity';
-import { AustriaControls } from './components/AustriaControls';
 import { DailyLog } from './components/DailyLog';
 import { SettingsView } from './components/SettingsView';
 import { ProfileView } from './components/ProfileView';
@@ -34,28 +35,16 @@ const App: React.FC = () => {
   
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDailyEntryOpen, setIsDailyEntryOpen] = useState(false);
 
   // Data State
   const [ratePerKm, setRatePerKm] = useState(0.12);
   const [logs, setLogs] = useState<any[]>([]);
-  const [austriaLogs, setAustriaLogs] = useState<any[]>([]); 
-  const [austriaSessions, setAustriaSessions] = useState<any[]>([]); 
   const [notes, setNotes] = useState<any[]>([]);
-  
-  const [austriaState, setAustriaState] = useState({
-    total_seconds: 0,
-    is_active: false,
-    last_start_timestamp: null as number | null
-  });
-
-  const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
 
   // Filters
   const [earningsFilter, setEarningsFilter] = useState<FilterType>('today');
   const [earningsCustomRange, setEarningsCustomRange] = useState({ start: '', end: '' });
-
-  const [austriaFilter, setAustriaFilter] = useState<FilterType>('today');
-  const [austriaCustomRange, setAustriaCustomRange] = useState({ start: '', end: '' });
 
   // Helpers
   const t = (key: any) => getTranslation(language, key);
@@ -107,17 +96,7 @@ const App: React.FC = () => {
       if(data.settings.language) setLanguage(data.settings.language);
       
       setLogs(data.logs);
-      setAustriaLogs(data.austria_logs || []); 
-      setAustriaSessions(data.austria_sessions || []); 
       setNotes(data.notes || []);
-      setAustriaState(data.austria);
-      
-      if (data.austria.is_active && data.austria.last_start_timestamp) {
-        setCurrentSessionSeconds(Math.floor((Date.now() - data.austria.last_start_timestamp) / 1000));
-      } else {
-        setCurrentSessionSeconds(0);
-      }
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -128,18 +107,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (token) fetchData();
   }, [token]);
-
-  useEffect(() => {
-    let interval: number;
-    if (austriaState.is_active && austriaState.last_start_timestamp) {
-      interval = window.setInterval(() => {
-        setCurrentSessionSeconds(Math.floor((Date.now() - (austriaState.last_start_timestamp as number)) / 1000));
-      }, 1000);
-    } else {
-      setCurrentSessionSeconds(0);
-    }
-    return () => clearInterval(interval);
-  }, [austriaState]);
 
   // Actions
   const updateSettings = async (newRate: number) => {
@@ -156,23 +123,6 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
     }
-  };
-
-  const toggleAustria = async () => {
-    try {
-      const res = await fetch('/api/austria/toggle', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setAustriaState({
-        total_seconds: data.total_seconds,
-        is_active: data.is_active,
-        last_start_timestamp: data.is_active ? Date.now() : null
-      });
-      if (!data.is_active) setCurrentSessionSeconds(0);
-      setTimeout(fetchData, 100); 
-    } catch (err) { console.error(err); }
   };
 
   const handleDailyLogSave = async (data: any) => {
@@ -225,15 +175,6 @@ const App: React.FC = () => {
       fetchData();
   };
 
-  const handleDeleteAustriaSession = async (id: number) => {
-      if (!confirm(t('confirm') + '?')) return;
-      await fetch(`/api/austria/session/${id}`, {
-          method: 'DELETE',
-          headers: {'Authorization': `Bearer ${token}`}
-      });
-      fetchData();
-  }
-
   // Calculations (Simplified)
   const isDateInMonth = (dateStr: string) => {
     const d = new Date(dateStr); const now = new Date();
@@ -253,22 +194,10 @@ const App: React.FC = () => {
     return 0;
   };
 
-  const getDisplayedAustriaTime = () => {
-    if (austriaFilter === 'today') return austriaState.total_seconds + currentSessionSeconds;
-    const historicalSum = austriaLogs.filter(log => {
-        if (log.date === todayStr) return false;
-        if (austriaFilter === 'month') return isDateInMonth(log.date);
-        if (austriaFilter === 'custom') return isDateInRange(log.date, austriaCustomRange.start, austriaCustomRange.end);
-        return false;
-      }).reduce((acc, curr) => acc + curr.total_seconds, 0);
-    let addToday = austriaFilter === 'month' || (austriaFilter === 'custom' && isDateInRange(todayStr, austriaCustomRange.start, austriaCustomRange.end));
-    return historicalSum + (addToday ? (austriaState.total_seconds + currentSessionSeconds) : 0);
-  };
-
   if (!token) return <LandingPage onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 pb-20 lg:pb-0">
+    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 pb-20 lg:pb-0 relative overflow-hidden">
       
       {/* Sidebar (Desktop) */}
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white flex-col shadow-2xl">
@@ -307,9 +236,18 @@ const App: React.FC = () => {
              </h2>
           </div>
           {currentView !== 'profile' && (
-            <div className="flex items-center space-x-4">
-               <button onClick={fetchData} className="p-2 text-slate-400 hover:text-slate-900 transition-colors rounded-full hover:bg-white">
-                 <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
+            <div className="flex items-center space-x-2 lg:space-x-4">
+               {currentView === 'dashboard' && (
+                 <button 
+                   onClick={() => setIsDailyEntryOpen(true)} 
+                   className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-1"
+                 >
+                   <Plus size={20} />
+                   <span className="hidden sm:inline text-sm font-bold pr-1">Entry</span>
+                 </button>
+               )}
+               <button onClick={fetchData} className="p-2 text-slate-400 hover:text-slate-900 transition-colors rounded-xl hover:bg-white border border-transparent hover:border-slate-200">
+                 <RefreshCw size={20} className={isLoading ? "animate-spin text-indigo-600" : ""} />
                </button>
                <div className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-white/50 px-4 py-2 rounded-full border border-slate-200 shadow-sm">
                   <CalendarCheck size={16} className="text-indigo-500" />
@@ -325,26 +263,28 @@ const App: React.FC = () => {
             {currentView === 'dashboard' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <SmartCard title={t('earnings')} value={formatCurrency(getDisplayedEarnings())} icon={<Wallet className="text-indigo-600" />} filterType={earningsFilter} onFilterChange={setEarningsFilter} customRange={earningsCustomRange} onCustomRangeChange={(s, e) => setEarningsCustomRange({ start: s, end: e })} trendUp={true} />
-                  <SmartCard title={t('austriaTime')} value={formatDuration(getDisplayedAustriaTime())} icon={<Clock className="text-rose-600" />} filterType={austriaFilter} onFilterChange={setAustriaFilter} customRange={austriaCustomRange} onCustomRangeChange={(s, e) => setAustriaCustomRange({ start: s, end: e })} subtitle={austriaState.is_active ? t('recording') : t('idle')} />
-                  <StatCard title={t('currentRate')} value={`${formatCurrency(ratePerKm)}/km`} icon={<MapPin className="text-emerald-600" />} subtitle={t('config')} />
-                </div>
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                  <div className="xl:col-span-2 space-y-6">
-                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                  <SmartCard 
+                    title={t('earnings')} 
+                    value={formatCurrency(getDisplayedEarnings())} 
+                    icon={<Wallet className="text-indigo-600" />} 
+                    filterType={earningsFilter} 
+                    onFilterChange={setEarningsFilter} 
+                    customRange={earningsCustomRange} 
+                    onCustomRangeChange={(s, e) => setEarningsCustomRange({ start: s, end: e })} 
+                    trendUp={true} 
+                    ratePerKm={ratePerKm}
+                  />
+                  <div className="md:col-span-1 lg:col-span-2 space-y-6">
+                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 h-full min-h-[300px]">
                        <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><TrendingUp size={20} className="text-slate-400" /> Revenue Analytics</h3>
                        <div className="h-[280px] w-full"><RevenueChart data={logs} /></div>
                      </div>
-                  </div>
-                  <div className="flex flex-col gap-6">
-                    <AustriaControls isInsideAustria={austriaState.is_active} currentSessionTime={currentSessionSeconds} onToggle={toggleAustria} />
-                    <DailyLog ratePerKm={ratePerKm} onSave={handleDailyLogSave} />
                   </div>
                 </div>
               </>
             )}
 
-            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={austriaSessions} onUpdateLog={handleLogUpdate} onDeleteLog={handleDeleteLog} onDeleteAustriaSession={handleDeleteAustriaSession} lang={language} />}
+            {currentView === 'history' && <RecentActivity logs={logs} austriaSessions={[]} onUpdateLog={handleLogUpdate} onDeleteLog={handleDeleteLog} onDeleteAustriaSession={() => {}} lang={language} />}
             {currentView === 'settings' && <SettingsView ratePerKm={ratePerKm} setRatePerKm={updateSettings} language={language} setLanguage={handleUpdateLanguage} />}
             {currentView === 'profile' && <ProfileView username={username} ratePerKm={ratePerKm} onLogout={handleLogout} onBack={() => setCurrentView('dashboard')} lang={language} />}
             {currentView === 'notes' && <NotesView notes={notes} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} lang={language} />}
@@ -352,6 +292,22 @@ const App: React.FC = () => {
         </div>
       </main>
       
+      {/* Daily Entry Sliding Panel */}
+      <div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isDailyEntryOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDailyEntryOpen(false)} />
+        <div className={`absolute top-0 right-0 w-full max-w-md h-full bg-slate-50 shadow-2xl transition-transform duration-300 transform ${isDailyEntryOpen ? 'translate-x-0' : 'translate-x-full'} overflow-y-auto flex flex-col`}>
+           <div className="p-6 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0 z-10">
+              <h2 className="text-xl font-bold text-slate-800">New Daily Entry</h2>
+              <button onClick={() => setIsDailyEntryOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 transition-colors">
+                 <X size={20} />
+              </button>
+           </div>
+           <div className="p-6 flex-1">
+              <DailyLog ratePerKm={ratePerKm} onSave={async (data) => { await handleDailyLogSave(data); setIsDailyEntryOpen(false); }} />
+           </div>
+        </div>
+      </div>
+
       <BottomNav currentView={currentView} onChangeView={setCurrentView} username={username} hasNotification={hasNotesToday} />
     </div>
   );
