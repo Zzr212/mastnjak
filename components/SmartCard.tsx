@@ -17,6 +17,8 @@ interface SmartCardProps {
   trend?: string;
   trendUp?: boolean;
   ratePerKm?: number;
+  totalKm?: number;
+  totalWages?: number;
 }
 
 export const SmartCard: React.FC<SmartCardProps> = ({ 
@@ -30,7 +32,9 @@ export const SmartCard: React.FC<SmartCardProps> = ({
   subtitle,
   trend,
   trendUp,
-  ratePerKm
+  ratePerKm,
+  totalKm,
+  totalWages
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -102,8 +106,24 @@ export const SmartCard: React.FC<SmartCardProps> = ({
       </div>
 
       {/* Main Value */}
-      <div className="mb-2">
+      <div className="mb-4">
         <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
+        
+        {/* Extra Stats */}
+        {(totalKm !== undefined || totalWages !== undefined) && (
+           <div className="flex items-center gap-3 mt-2 text-xs font-medium text-slate-500">
+             {totalKm !== undefined && (
+               <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                 <span className="text-slate-700 font-bold">{totalKm}</span> km
+               </div>
+             )}
+             {totalWages !== undefined && (
+               <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                 <span className="text-slate-700 font-bold">{totalWages}</span> dnevnica
+               </div>
+             )}
+           </div>
+        )}
       </div>
 
       {/* Footer / Info */}

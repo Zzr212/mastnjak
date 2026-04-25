@@ -187,12 +187,20 @@ const App: React.FC = () => {
   };
   const isToday = (dateStr: string) => dateStr === todayStr;
 
-  const getDisplayedEarnings = () => {
-    if (earningsFilter === 'today') return logs.find(l => isToday(l.date))?.total_earnings || 0;
-    if (earningsFilter === 'month') return logs.filter(l => isDateInMonth(l.date)).reduce((sum, l) => sum + l.total_earnings, 0);
-    if (earningsFilter === 'custom') return logs.filter(l => isDateInRange(l.date, earningsCustomRange.start, earningsCustomRange.end)).reduce((sum, l) => sum + l.total_earnings, 0);
-    return 0;
+  const getEarningsStats = () => {
+    let filtered = [];
+    if (earningsFilter === 'today') filtered = logs.filter(l => isToday(l.date));
+    else if (earningsFilter === 'month') filtered = logs.filter(l => isDateInMonth(l.date));
+    else if (earningsFilter === 'custom') filtered = logs.filter(l => isDateInRange(l.date, earningsCustomRange.start, earningsCustomRange.end));
+    
+    return {
+      earnings: filtered.reduce((sum, l) => sum + (l.total_earnings || 0), 0),
+      km: filtered.reduce((sum, l) => sum + Math.max(0, (l.end_km || 0) - (l.start_km || 0)), 0),
+      wages: filtered.filter(l => (l.wage || 0) > 0).length
+    };
   };
+
+  const stats = getEarningsStats();
 
   if (!token) return <LandingPage onLogin={handleLogin} />;
 
@@ -265,7 +273,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <SmartCard 
                     title={t('earnings')} 
-                    value={formatCurrency(getDisplayedEarnings())} 
+                    value={formatCurrency(stats.earnings)} 
                     icon={<Wallet className="text-indigo-600" />} 
                     filterType={earningsFilter} 
                     onFilterChange={setEarningsFilter} 
@@ -273,6 +281,8 @@ const App: React.FC = () => {
                     onCustomRangeChange={(s, e) => setEarningsCustomRange({ start: s, end: e })} 
                     trendUp={true} 
                     ratePerKm={ratePerKm}
+                    totalKm={stats.km}
+                    totalWages={stats.wages}
                   />
                   <div className="md:col-span-1 lg:col-span-2 space-y-6">
                      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 h-full min-h-[300px]">
