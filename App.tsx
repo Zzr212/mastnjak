@@ -211,8 +211,10 @@ const App: React.FC = () => {
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white flex-col shadow-2xl">
         <div className="h-24 flex items-center px-8 border-b border-slate-800">
            <div>
-             <h1 className="text-2xl font-black tracking-tighter text-white">MASTNAK</h1>
-             <p className="text-xs text-slate-400 font-medium tracking-widest uppercase">Driver Intelligence</p>
+             <h1 className="text-xl font-black tracking-tighter text-white text-indigo-400 flex items-center gap-2">
+                 Driver
+             </h1>
+             <p className="text-lg font-bold text-white tracking-widest">Dashboard</p>
            </div>
         </div>
         <nav className="flex-1 px-4 py-8 space-y-2">
@@ -313,7 +315,11 @@ const App: React.FC = () => {
               </button>
            </div>
            <div className="p-6 flex-1">
-              <DailyLog ratePerKm={ratePerKm} onSave={async (data) => { await handleDailyLogSave(data); setIsDailyEntryOpen(false); }} />
+              <DailyLog 
+                ratePerKm={ratePerKm} 
+                initialStartKm={logs.length > 0 ? String(logs[0].end_km || '') : ''}
+                onSave={async (data) => { await handleDailyLogSave(data); setIsDailyEntryOpen(false); }} 
+              />
            </div>
         </div>
       </div>

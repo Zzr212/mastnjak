@@ -280,6 +280,57 @@ app.post('/api/settings', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
+// Backup Routes
+app.get('/api/backup', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  db.serialize(() => {
+    db.all(`SELECT * FROM daily_logs WHERE user_id = ?`, [userId], (err, logs) => {
+      if (err) return res.status(500).json({ error: err.message });
+      db.all(`SELECT * FROM notes WHERE user_id = ?`, [userId], (err, notes) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ logs: logs || [], notes: notes || [] });
+      });
+    });
+  });
+});
+
+app.post('/api/backup', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const { logs, notes } = req.body;
+  
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION");
+    // Delete existing records for this user
+    db.run(`DELETE FROM daily_logs WHERE user_id = ?`, [userId]);
+    db.run(`DELETE FROM notes WHERE user_id = ?`, [userId]);
+    
+    // Insert new records if present
+    const insertLog = db.prepare(`INSERT INTO daily_logs (user_id, date, start_km, end_km, wage, total_earnings) VALUES (?, ?, ?, ?, ?, ?)`);
+    if (Array.isArray(logs)) {
+      logs.forEach(log => {
+        insertLog.run([userId, log.date, log.start_km, log.end_km, log.wage, log.total_earnings]);
+      });
+    }
+    insertLog.finalize();
+    
+    const insertNote = db.prepare(`INSERT INTO notes (user_id, content, reminder_date, is_completed) VALUES (?, ?, ?, ?)`);
+    if (Array.isArray(notes)) {
+      notes.forEach(note => {
+        insertNote.run([userId, note.content, note.reminder_date, note.is_completed || 0]);
+      });
+    }
+    insertNote.finalize();
+    
+    db.run("COMMIT", (err) => {
+      if (err) {
+         db.run("ROLLBACK");
+         return res.status(500).json({ error: "Failed to restore backup" });
+      }
+      res.json({ success: true });
+    });
+  });
+});
+
 // Notes Routes
 app.post('/api/notes', authenticateToken, (req, res) => {
   const { content, reminder_date } = req.body;

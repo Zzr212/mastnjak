@@ -18,7 +18,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [visitorData, setVisitorData] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [regSuccess, setRegSuccess] = useState(false); // New state for reg animation
+  const [regSuccess, setRegSuccess] = useState(false);
   const [publicUsers, setPublicUsers] = useState<any[]>([]);
 
   // Local state for UI language during login (default en)
@@ -63,17 +63,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       }
 
       if (isRegistering) {
-        // Show Success Animation then Auto-Login
         setRegSuccess(true);
         setTimeout(() => {
           onLogin(data.token, data.username || username, (data.language as Language) || 'en');
-        }, 2000); 
+        }, 1500); 
       } else {
         onLogin(data.token, data.username || username, (data.language as Language) || 'en');
       }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Connection failed");
+    } finally {
       setLoading(false);
     }
   };
@@ -104,187 +104,121 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 font-sans text-slate-100 overflow-x-hidden relative selection:bg-indigo-500/30">
-      
-      {/* --- ANIMATED ROAD BACKGROUND (Fixed behind everything) --- */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950"></div>
-        <div className="absolute top-[49%] left-0 w-full h-2 bg-indigo-500 blur-xl opacity-60"></div>
-        <div className="absolute top-[50%] left-0 w-full h-1/2 bg-slate-950 perspective-road">
-          <div className="road-container w-full h-full relative overflow-hidden flex justify-center">
-             <div className="road-line center-line"></div>
-             <div className="road-line side-line-left"></div>
-             <div className="road-line side-line-right"></div>
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        .perspective-road { transform: perspective(300px) rotateX(20deg); transform-origin: top center; }
-        .road-container { transform: perspective(100px) rotateX(40deg) scale(1.5); }
-        .road-line { position: absolute; top: 0; height: 200%; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.5), #fff); animation: moveRoad 1s linear infinite; }
-        .center-line { width: 4px; left: 50%; transform: translateX(-50%); border-left: 2px dashed rgba(255,255,255,0.3); background: none; }
-        .side-line-left { width: 60px; left: 10%; background: linear-gradient(to bottom, transparent, rgba(99, 102, 241, 0.2)); filter: blur(4px); }
-        .side-line-right { width: 60px; right: 10%; background: linear-gradient(to bottom, transparent, rgba(99, 102, 241, 0.2)); filter: blur(4px); }
-        @keyframes moveRoad { 0% { transform: translateY(-50%) translateX(-50%); } 100% { transform: translateY(0%) translateX(-50%); } }
-        
-        @keyframes entranceLogo {
-          0% { transform: scale(0.5) translateY(-50px); opacity: 0; filter: blur(10px); }
-          100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
-        }
-        .entrance-anim { animation: entranceLogo 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-      `}</style>
-
-      {/* --- STICKY NAV --- */}
-      <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 bg-slate-900/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
-        <div className="text-2xl font-black tracking-tighter text-white flex items-center gap-2 entrance-anim">
-           MASTNAK
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-500/30 flex flex-col">
+      {/* Navigation */}
+      <nav className="w-full flex items-center justify-between px-6 py-4 md:px-12 bg-white border-b border-slate-200">
+        <div className="text-xl md:text-2xl font-black tracking-tight text-indigo-600 flex items-center gap-2">
+           Driver Dashboard
         </div>
         <button 
           onClick={() => { setShowLogin(!showLogin); setShowVisitorInput(false); }}
-          className="bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 border border-white/20 px-6 py-2 rounded-full font-bold text-sm transition-all shadow-lg shadow-white/5"
+          className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2 rounded-lg font-semibold text-sm transition-colors border border-slate-300"
         >
           {showLogin ? 'Close' : 'Login / Register'}
         </button>
       </nav>
 
-      {/* --- HERO SECTION --- */}
-      <section className="relative z-10 pt-32 pb-20 px-6 text-center min-h-[60vh] flex flex-col justify-center">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col justify-center relative z-10 px-6 py-12">
          {showLogin ? (
-           // LOGIN FORM
-           <div className="max-w-md mx-auto w-full animate-in fade-in slide-in-from-bottom-10 duration-500">
+           <div className="max-w-md mx-auto w-full bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
              {regSuccess ? (
-                // SUCCESS ANIMATION
-                <div className="flex flex-col items-center justify-center py-10 animate-in zoom-in duration-500">
-                   <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.5)] mb-6">
-                      <CheckCircle2 size={48} className="text-white animate-bounce" />
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                   <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle2 size={32} className="text-emerald-500" />
                    </div>
-                   <h2 className="text-3xl font-bold text-white mb-2">Welcome Aboard!</h2>
-                   <p className="text-indigo-200">Preparing your dashboard...</p>
+                   <h2 className="text-2xl font-bold text-slate-800 mb-2">Welcome Aboard!</h2>
+                   <p className="text-slate-500">Preparing your dashboard...</p>
                 </div>
              ) : (
                 <>
-                 <h2 className="text-3xl font-bold mb-8 drop-shadow-lg">{isRegistering ? 'Join the Elite' : 'Welcome Back, Driver'}</h2>
-                 {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg mb-4 text-sm backdrop-blur-md">{error}</div>}
+                 <h2 className="text-2xl font-bold mb-6 text-slate-800 text-center">{isRegistering ? 'Create Account' : 'Welcome Back'}</h2>
+                 {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-100 text-center">{error}</div>}
                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="relative group">
-                       <div className="absolute left-4 top-4 text-slate-400 group-focus-within:text-white transition-colors"><User size={20} /></div>
-                       <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-950/60 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all backdrop-blur-md shadow-xl" placeholder={t.username} />
+                    <div>
+                       <label className="block text-sm font-semibold text-slate-600 mb-1">{t.username}</label>
+                       <div className="relative">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><User size={18} /></div>
+                          <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none" placeholder="john_doe" />
+                       </div>
                     </div>
-                    <div className="relative group">
-                       <div className="absolute left-4 top-4 text-slate-400 group-focus-within:text-white transition-colors"><Lock size={20} /></div>
-                       <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-950/60 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all backdrop-blur-md shadow-xl" placeholder={t.password} />
+                    <div>
+                       <label className="block text-sm font-semibold text-slate-600 mb-1">{t.password}</label>
+                       <div className="relative">
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Lock size={18} /></div>
+                          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none" placeholder="••••••••" />
+                       </div>
                     </div>
-                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all flex items-center justify-center gap-2 active:scale-95 mt-4 hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]">
-                      {loading ? 'Processing...' : (isRegistering ? t.createAccount : t.login)} <ArrowRight size={20} />
+                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow-sm transition-all flex items-center justify-center gap-2 mt-2">
+                      {loading ? 'Processing...' : (isRegistering ? t.createAccount : t.login)} <ArrowRight size={18} />
                     </button>
                  </form>
-                 <button onClick={() => setIsRegistering(!isRegistering)} className="mt-6 text-slate-400 hover:text-white text-sm font-medium transition-colors">
-                   {isRegistering ? 'Already have an account? Login' : 'Create an account'}
-                 </button>
+                 <div className="mt-6 text-center">
+                   <button onClick={() => setIsRegistering(!isRegistering)} className="text-indigo-600 hover:text-indigo-800 text-sm font-semibold transition-colors">
+                     {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
+                   </button>
+                 </div>
                 </>
              )}
            </div>
          ) : showVisitorInput ? (
-            // VISITOR CODE INPUT
-            <div className="max-w-md mx-auto w-full animate-in fade-in slide-in-from-bottom-10 duration-500">
-               <h2 className="text-3xl font-bold mb-8 drop-shadow-lg">Visitor Access</h2>
-               {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-lg mb-4 text-sm backdrop-blur-md">{error}</div>}
+            <div className="max-w-md mx-auto w-full bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+               <h2 className="text-2xl font-bold mb-6 text-slate-800 text-center">Visitor Access</h2>
+               {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm border border-red-100 text-center">{error}</div>}
                <form onSubmit={handleVisitorSubmit} className="space-y-4">
-                  <div className="relative group">
-                     <div className="absolute left-4 top-4 text-slate-400 group-focus-within:text-white transition-colors"><Key size={20} /></div>
-                     <input type="text" required value={visitorCode} onChange={(e) => setVisitorCode(e.target.value.toUpperCase())} className="w-full pl-12 pr-4 py-4 bg-slate-950/60 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all backdrop-blur-md shadow-xl font-mono tracking-widest uppercase" placeholder="ENTER CODE" />
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1">Enter Code</label>
+                    <div className="relative group">
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Key size={20} /></div>
+                       <input type="text" required value={visitorCode} onChange={(e) => setVisitorCode(e.target.value.toUpperCase())} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono tracking-widest uppercase outline-none" placeholder="1A2B3C" />
+                    </div>
                   </div>
-                  <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all flex items-center justify-center gap-2 active:scale-95 mt-4 hover:shadow-[0_0_30px_rgba(79,70,229,0.5)]">
-                    {loading ? 'Verifying...' : 'Access Dashboard'} <ArrowRight size={20} />
+                  <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold shadow-sm transition-all flex items-center justify-center gap-2 mt-2">
+                    {loading ? 'Verifying...' : 'Access Dashboard'} <ArrowRight size={18} />
                   </button>
                </form>
-               <button onClick={() => setShowVisitorInput(false)} className="mt-6 text-slate-400 hover:text-white text-sm font-medium transition-colors">
-                 Cancel
-               </button>
+               <div className="mt-6 text-center">
+                 <button onClick={() => setShowVisitorInput(false)} className="text-slate-500 hover:text-slate-700 text-sm font-semibold transition-colors">
+                   Cancel
+                 </button>
+               </div>
             </div>
          ) : (
-           // HERO TEXT
-           <div className="max-w-3xl mx-auto">
-             <h1 className="entrance-anim text-5xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-r from-white via-indigo-100 to-slate-400 bg-clip-text text-transparent drop-shadow-sm">
-               DRIVER INTELLIGENCE
+           <div className="max-w-3xl mx-auto text-center">
+             <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 text-slate-900">
+               The ultimate dashboard for <span className="text-indigo-600">professional drivers</span>.
              </h1>
-             <p className="entrance-anim text-lg md:text-xl text-indigo-100/70 mb-10 max-w-2xl mx-auto leading-relaxed" style={{animationDelay: '0.2s'}}>
-               The ultimate dashboard for professional drivers. Track earnings, monitor Austria transit times, and manage your schedule with precision.
+             <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+               Track earnings and manage your schedule with precision in a beautifully optimized, classic interface.
              </p>
-             <div className="flex flex-col items-center gap-4">
+             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                <button 
                   onClick={() => setShowLogin(true)}
-                  className="entrance-anim group relative bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_30px_rgba(79,70,229,0.4)] transition-all hover:scale-105 active:scale-95 overflow-hidden"
-                  style={{animationDelay: '0.4s'}}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
                >
-                  <span className="relative z-10 flex items-center gap-2">Start Tracking Now <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform"/></span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  Get Started <ChevronRight size={20} />
                </button>
                
                <button 
                  onClick={() => setShowVisitorInput(true)}
-                 className="entrance-anim text-xs font-bold text-slate-500 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2"
-                 style={{animationDelay: '0.6s'}}
+                 className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-bold text-lg shadow-sm transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
                >
-                 <Key size={12} />
-                 Visitor Code
+                 <Key size={18} />
+                 I have a Visitor Code
                </button>
              </div>
            </div>
          )}
-      </section>
+      </main>
 
-      {/* --- PUBLIC USERS CAROUSEL --- */}
+      {/* Footer */}
       {!showLogin && !showVisitorInput && (
-        <section className="relative z-20 pb-20 overflow-hidden">
-          <div className="px-6 mb-4 max-w-7xl mx-auto">
-             <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-2 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                Active Fleet Members
-             </h3>
-          </div>
-          <div className="flex gap-4 overflow-x-auto px-6 pb-8 scrollbar-hide snap-x max-w-7xl mx-auto">
-             {publicUsers.map((user, idx) => {
-               const role = getRole(user.created_at);
-               return (
-                 <div key={idx} className="flex-shrink-0 w-64 bg-slate-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 snap-start hover:bg-slate-800/60 transition-all hover:-translate-y-1 hover:border-indigo-500/30">
-                    <div className="flex items-center gap-3 mb-3">
-                       <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-700 border-2 border-slate-600 shadow-lg">
-                          {user.profile_image ? (
-                            <img src={user.profile_image} alt={user.username} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={20} /></div>
-                          )}
-                       </div>
-                       <div>
-                          <p className="font-bold text-white truncate max-w-[120px]">{user.username}</p>
-                          <div className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${role.bg} ${role.color} bg-opacity-10 mt-1`}>
-                             <span>{role.icon}</span> {role.label}
-                          </div>
-                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 bg-black/20 py-1 px-2 rounded-lg w-fit">
-                       <Clock size={10} />
-                       <span>Last seen: {new Date(user.last_active).toLocaleDateString()}</span>
-                    </div>
-                 </div>
-               );
-             })}
-             {publicUsers.length === 0 && (
-                <div className="text-slate-500 text-sm italic px-4">No public profiles yet. Be the first to join the fleet!</div>
-             )}
-          </div>
-        </section>
+        <footer className="w-full bg-white border-t border-slate-200 py-8 px-6 text-center mt-auto">
+           <div className="text-xl font-black tracking-tight text-slate-300 mb-2">Driver Dashboard</div>
+           <p className="text-slate-500 text-sm">Empowering drivers with simplicity and modern tools.</p>
+           <p className="text-slate-400 text-xs mt-4">© {new Date().getFullYear()} Driver Dashboard. All rights reserved.</p>
+        </footer>
       )}
-
-      {/* --- FOOTER --- */}
-      <footer className="relative z-20 bg-slate-950 border-t border-white/5 py-10 px-6 text-center">
-         <div className="text-2xl font-black tracking-tighter text-white mb-4">MASTNAK</div>
-         <p className="text-slate-500 text-sm mb-6 max-w-md mx-auto">Empowering drivers with intelligence, simplicity, and modern tools for the road ahead.</p>
-         <p className="text-slate-800 text-[10px] mt-8 font-mono">© 2024 Mastnak Systems. All rights reserved.</p>
-      </footer>
-
     </div>
   );
-};
+};;
