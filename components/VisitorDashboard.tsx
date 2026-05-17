@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Clock, TrendingUp, MapPin, X } from 'lucide-react';
 import { RevenueChart } from './RevenueChart';
 import { formatCurrency, formatDuration } from '../utils/formatters';
@@ -13,8 +13,34 @@ export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClos
   const { user_info, settings, logs } = data;
   const role = user_info ? getRole(user_info.created_at) : { label: 'Driver', color: 'text-slate-500', bg: 'bg-slate-100', icon: '🚛' };
 
-  // Calculate totals
-  const totalEarnings = logs.reduce((acc: number, log: any) => acc + (log.total_earnings || 0), 0);
+  // Month State
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth]);
+
+  const currentYear = new Date().getFullYear();
+  
+  // Filter logs by month
+  const monthLogs = logs.filter((log: any) => {
+    const logDate = new Date(log.date);
+    return logDate.getMonth() === selectedMonth && logDate.getFullYear() === currentYear;
+  });
+
+  const monthEarnings = monthLogs.reduce((acc: number, log: any) => acc + (log.total_earnings || 0), 0);
+  const monthKm = monthLogs.reduce((acc: number, log: any) => acc + Math.max(0, (log.end_km || 0) - (log.start_km || 0)), 0);
+  const monthWages = monthLogs.filter((log: any) => (log.wage || 0) > 0).length;
+
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthName = months[selectedMonth];
+
+  // Pagination
+  const sortedMonthLogs = [...monthLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const totalPages = Math.ceil(sortedMonthLogs.length / itemsPerPage);
+  const paginatedLogs = sortedMonthLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="min-h-screen bg-slate-50 relative">
@@ -45,8 +71,18 @@ export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClos
 
          <div className="relative z-10 grid grid-cols-1 gap-4">
             <div className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl">
-               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Earnings</p>
-               <p className="text-2xl font-black">{formatCurrency(totalEarnings)}</p>
+               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">{monthName} Overview</p>
+               <div className="flex flex-col gap-2">
+                 <p className="text-3xl font-black text-white tracking-tight">{formatCurrency(monthEarnings)}</p>
+                 <div className="flex items-center gap-3 text-xs font-medium text-slate-300 mt-1">
+                   <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/5">
+                     <span className="text-white font-bold">{monthKm}</span> km
+                   </div>
+                   <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/5">
+                     <span className="text-white font-bold">{monthWages}</span> dnevnica
+                   </div>
+                 </div>
+               </div>
             </div>
          </div>
       </div>
@@ -62,7 +98,7 @@ export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClos
                   <h3 className="font-bold">Revenue Analytics</h3>
                </div>
             </div>
-            <RevenueChart data={logs} />
+            <RevenueChart data={logs} month={selectedMonth} onMonthChange={setSelectedMonth} />
          </div>
 
          {/* Recent Activity */}
@@ -72,17 +108,41 @@ export const VisitorDashboard: React.FC<VisitorDashboardProps> = ({ data, onClos
                <h3 className="font-bold">Recent Activity</h3>
             </div>
             <div className="space-y-4">
-               {logs.slice(0, 5).map((log: any, i: number) => (
+               {paginatedLogs.map((log: any, i: number) => (
                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                     <div>
                        <p className="text-xs font-bold text-slate-500">{new Date(log.date).toLocaleDateString()}</p>
                        <p className="text-sm font-bold text-slate-800">{log.end_km - log.start_km} km driven</p>
                     </div>
-                    <span className="text-emerald-600 font-black">{formatCurrency(log.total_earnings)}</span>
+                    <div className="text-right flex flex-col items-end gap-1">
+                       <p className="text-emerald-600 font-black">{formatCurrency(log.total_earnings)}</p>
+                       {(log.wage || 0) > 0 && <p className="text-[10px] text-slate-400 font-bold uppercase bg-slate-200/50 px-1.5 py-0.5 rounded">1 dnevnica</p>}
+                    </div>
                  </div>
                ))}
-               {logs.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No recent activity</p>}
+               {sortedMonthLogs.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No recent activity for {monthName}</p>}
             </div>
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-6">
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const page = idx + 1;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${
+                        currentPage === page 
+                          ? 'bg-indigo-600 text-white shadow-md' 
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
          </div>
 
          <div className="text-center">

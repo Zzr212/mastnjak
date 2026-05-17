@@ -12,10 +12,18 @@ import { formatCurrency } from '../utils/formatters';
 
 interface RevenueChartProps {
   data: any[];
+  month?: number;
+  onMonthChange?: (month: number) => void;
 }
 
-export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+export const RevenueChart: React.FC<RevenueChartProps> = ({ data, month, onMonthChange }) => {
+  const [internalMonth, setInternalMonth] = useState<number>(new Date().getMonth());
+  const selectedMonth = month !== undefined ? month : internalMonth;
+  const handleMonthChange = (m: number) => {
+    if (onMonthChange) onMonthChange(m);
+    else setInternalMonth(m);
+  };
+
   const currentYear = new Date().getFullYear();
 
   const months = [
@@ -43,7 +51,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
       <div className="flex justify-end mb-2 px-2">
         <select 
           value={selectedMonth} 
-          onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+          onChange={(e) => handleMonthChange(parseInt(e.target.value))}
           className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1"
         >
           {months.map((m, idx) => (
