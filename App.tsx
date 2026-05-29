@@ -23,6 +23,7 @@ import { ProfileView } from './components/ProfileView';
 import { NotesView } from './components/NotesView'; 
 import { BottomNav } from './components/BottomNav';
 import { LandingPage } from './components/LandingPage';
+import { CalendarView } from './components/CalendarView';
 import { formatCurrency, formatDuration } from './utils/formatters';
 import { Language, getTranslation } from './utils/translations';
 
@@ -36,6 +37,8 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [isDailyEntryOpen, setIsDailyEntryOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [editLogData, setEditLogData] = useState<any | null>(null);
 
   // Data State
   const [ratePerKm, setRatePerKm] = useState(0.12);
@@ -249,7 +252,7 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-2 lg:space-x-4">
                {currentView === 'dashboard' && (
                  <button 
-                   onClick={() => setIsDailyEntryOpen(true)} 
+                   onClick={() => { setEditLogData(null); setIsDailyEntryOpen(true); }} 
                    className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center gap-1"
                  >
                    <Plus size={20} />
@@ -285,6 +288,7 @@ const App: React.FC = () => {
                     ratePerKm={ratePerKm}
                     totalKm={stats.km}
                     totalWages={stats.wages}
+                    onOpenCalendar={() => setIsCalendarOpen(true)}
                   />
                   <div className="md:col-span-1 lg:col-span-2 space-y-6">
                      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 h-full min-h-[300px]">
@@ -309,20 +313,34 @@ const App: React.FC = () => {
         <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDailyEntryOpen(false)} />
         <div className={`absolute top-0 right-0 w-full max-w-md h-full bg-slate-50 shadow-2xl transition-transform duration-300 transform ${isDailyEntryOpen ? 'translate-x-0' : 'translate-x-full'} overflow-y-auto flex flex-col`}>
            <div className="p-6 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0 z-10">
-              <h2 className="text-xl font-bold text-slate-800">New Daily Entry</h2>
-              <button onClick={() => setIsDailyEntryOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 transition-colors">
+              <h2 className="text-xl font-bold text-slate-800">{editLogData ? 'Edit Daily Entry' : 'New Daily Entry'}</h2>
+              <button onClick={() => { setIsDailyEntryOpen(false); setEditLogData(null); }} className="p-2 bg-slate-100 rounded-full text-slate-600 hover:bg-slate-200 transition-colors">
                  <X size={20} />
               </button>
            </div>
            <div className="p-6 flex-1">
               <DailyLog 
                 ratePerKm={ratePerKm} 
-                initialStartKm={logs.length > 0 ? String(logs[0].end_km || '') : ''}
-                onSave={async (data) => { await handleDailyLogSave(data); setIsDailyEntryOpen(false); }} 
+                initialStartKm={(!editLogData && logs.length > 0) ? String(logs[0].end_km || '') : ''}
+                editLogData={editLogData}
+                onSave={async (data) => { await handleDailyLogSave(data); setIsDailyEntryOpen(false); setEditLogData(null); }} 
               />
            </div>
         </div>
       </div>
+
+      {isCalendarOpen && (
+        <CalendarView 
+          logs={logs} 
+          ratePerKm={ratePerKm} 
+          onClose={() => setIsCalendarOpen(false)} 
+          onEditLog={(log) => {
+            setIsCalendarOpen(false);
+            setEditLogData(log);
+            setIsDailyEntryOpen(true);
+          }}
+        />
+      )}
 
       <BottomNav currentView={currentView} onChangeView={setCurrentView} username={username} hasNotification={hasNotesToday} />
     </div>

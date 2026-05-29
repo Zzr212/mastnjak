@@ -19,6 +19,7 @@ interface SmartCardProps {
   ratePerKm?: number;
   totalKm?: number;
   totalWages?: number;
+  onOpenCalendar?: () => void;
 }
 
 export const SmartCard: React.FC<SmartCardProps> = ({ 
@@ -34,7 +35,8 @@ export const SmartCard: React.FC<SmartCardProps> = ({
   trendUp,
   ratePerKm,
   totalKm,
-  totalWages
+  totalWages,
+  onOpenCalendar
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -106,7 +108,7 @@ export const SmartCard: React.FC<SmartCardProps> = ({
       </div>
 
       {/* Main Value */}
-      <div className="mb-4">
+      <div className="mb-4 relative">
         <div className="text-3xl font-bold text-slate-900 tracking-tight">{value}</div>
         
         {/* Extra Stats */}
@@ -123,6 +125,17 @@ export const SmartCard: React.FC<SmartCardProps> = ({
                </div>
              )}
            </div>
+        )}
+
+        {/* Calendar Icon overlay absolute bottom right if open is requested */}
+        {onOpenCalendar && (
+          <button 
+             onClick={onOpenCalendar}
+             className="absolute bottom-0 right-0 p-2.5 text-indigo-500 bg-indigo-50/80 rounded-xl hover:bg-indigo-100 hover:text-indigo-700 hover:scale-105 active:scale-95 transition-all shadow-sm border border-indigo-100/50"
+             title="Open full calendar"
+          >
+             <Calendar size={20} />
+          </button>
         )}
       </div>
 

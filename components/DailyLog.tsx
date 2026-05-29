@@ -12,17 +12,37 @@ interface DailyLogData {
 
 interface DailyLogProps {
   ratePerKm: number;
+  initialStartKm?: string;
+  editLogData?: any | null;
   onSave: (data: DailyLogData) => void;
 }
 
-export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
-  const [startKm, setStartKm] = useState<string>('');
+export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, initialStartKm = '', editLogData = null, onSave }) => {
+  const [startKm, setStartKm] = useState<string>(initialStartKm);
   const [endKm, setEndKm] = useState<string>('');
   const [dailyWage, setDailyWage] = useState<string>('');
+  const [withoutWage, setWithoutWage] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  
+  // Update local state if prop changes and not touched yet or editing
+  useEffect(() => {
+    if (editLogData) {
+      setStartKm(editLogData.start_km?.toString() || '');
+      setEndKm(editLogData.end_km?.toString() || '');
+      setDailyWage(editLogData.wage > 0 ? editLogData.wage.toString() : '');
+      setWithoutWage(!editLogData.wage || editLogData.wage <= 0);
+      setSelectedDate(editLogData.date || new Date().toISOString().split('T')[0]);
+    } else if (initialStartKm && !startKm) {
+      setStartKm(initialStartKm);
+      setEndKm('');
+      setDailyWage('');
+      setWithoutWage(false);
+      setSelectedDate(new Date().toISOString().split('T')[0]);
+    }
+  }, [initialStartKm, editLogData]);
   
   // Date selection state
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   
   // Status state for the button
   const [status, setStatus] = useState<'idle' | 'saving' | 'success'>('idle');
@@ -30,7 +50,7 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
   const calculateEstimatedEarnings = () => {
     const start = parseFloat(startKm) || 0;
     const end = parseFloat(endKm) || 0;
-    const wage = parseFloat(dailyWage) || 0;
+    const wage = withoutWage ? 0 : (parseFloat(dailyWage) || 0);
     
     const dist = Math.max(0, end - start);
     return (dist * ratePerKm) + wage;
@@ -40,18 +60,19 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
     const total = calculateEstimatedEarnings();
     const start = parseFloat(startKm) || 0;
     const end = parseFloat(endKm) || 0;
-    const wage = parseFloat(dailyWage) || 0;
+    const wage = withoutWage ? 0 : (parseFloat(dailyWage) || 0);
 
-    if (total > 0) {
+    if (total > 0 || start > 0 || end > 0) {
       setStatus('saving');
       
       await onSave({
+        id: editLogData?.id,
         start_km: start,
         end_km: end,
         wage: wage,
         total_earnings: total,
         date: selectedDate
-      });
+      } as any);
 
       setStatus('success');
       
@@ -135,12 +156,24 @@ export const DailyLog: React.FC<DailyLogProps> = ({ ratePerKm, onSave }) => {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Daily Wage / Dnevnica (€)</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-medium text-slate-500">Daily Wage / Dnevnica (€)</label>
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={withoutWage}
+                onChange={(e) => setWithoutWage(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Samo kilometri (bez dnevnice)
+            </label>
+          </div>
           <input 
             type="number" 
             value={dailyWage}
             onChange={(e) => setDailyWage(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+            disabled={withoutWage}
+            className={`w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all ${withoutWage ? 'opacity-50 cursor-not-allowed' : ''}`}
             placeholder="e.g. 50"
           />
         </div>
